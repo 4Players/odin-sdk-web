@@ -1,0 +1,65 @@
+:root {
+  --app-color-base: #333333;
+  --app-color-muted: #b4b4b4;
+  --app-color-contrast: #f3f3f3;
+  --app-color-primary: #004a6d;
+  --app-color-accent: #e40e20;
+  --app-color-success: #4caf50;
+  --app-color-warning: #ffc107;
+  --app-color-error: #f44336;
+
+  --app-padding: 10px;
+  --app-input-height: 30px;
+}
+
+#app {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--app-color-base);
+  margin: var(--app-padding);
+}
+
+#login-form > label {
+  display: block;
+  margin-bottom: calc(var(--app-padding) / 2);
+}
+
+#login-form > input {
+  box-sizing: border-box;
+  width: 220px;
+  padding: 0 var(--app-padding);
+  height: var(--app-input-height);
+  margin-bottom: var(--app-padding);
+  border: 1px solid var(--app-color-muted);
+}
+
+#login-form > input:focus {
+  outline: none;
+  border: 1px solid var(--app-color-primary);
+}
+
+#login-form > input:disabled {
+  background-color: var(--app-color-muted);
+}
+
+#login-form > button {
+  width: 80px;
+  height: var(--app-input-height);
+  padding: 0 var(--app-padding);
+}
+
+fieldset {
+  margin-top: var(--app-padding);
+  border: 1px solid var(--app-color-muted);
+}
+
+legend {
+  color: var(--app-color-primary);
+}
+
+.talking {
+  color: var(--app-color-success);
+  transition: all ease 0.2s;
+}
