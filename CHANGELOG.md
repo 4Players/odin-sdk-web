@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.5
+
+- Added npm `bundle` script to create standalone broser bundles.
+
 ## 0.5.4
 
 - Added `OdinRoom.changeMediaStream` to allow replacing the microphone capture stream (e.g. when you want to change your input device).
