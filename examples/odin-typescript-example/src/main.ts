@@ -1,5 +1,5 @@
 import { generateAccessKey, TokenGenerator } from '@4players/odin-tokens';
-import { OdinClient, OdinConnectionState, OdinMedia, OdinPeer, OdinRoom } from '@4players/odin';
+import { OdinClient, OdinConnectionState, OdinMedia, OdinPeer } from '@4players/odin';
 
 import './style.css';
 
