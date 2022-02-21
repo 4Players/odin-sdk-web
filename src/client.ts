@@ -1,10 +1,10 @@
 import {
-  OdinAudioSettings,
-  OdinEvent,
-  OdinConnectionState,
   AuthResult,
-  OdinClientSettings,
   ClientEvents,
+  OdinAudioSettings,
+  OdinClientSettings,
+  OdinConnectionState,
+  OdinEvent,
 } from './types';
 import { AudioService } from './audio-service';
 import { RtcHandler } from './rtc-handler';
@@ -45,18 +45,22 @@ export class OdinClient {
     return OdinClient._state;
   }
 
+  /**
+   * Update the state of the connection.
+   */
   private static set state(state: OdinConnectionState) {
-    if (OdinClient._state !== state) {
-      OdinClient._eventTarget.dispatchEvent(new OdinEvent('ConnectionStateChanged', { state }));
+    const oldState = this._state;
+    this._state = state;
+    if (oldState !== state) {
+      this._eventTarget.dispatchEvent(new OdinEvent('ConnectionStateChanged', { state }));
     }
-    OdinClient._state = state;
   }
 
   /**
    * Returns the underlying WebSocket main stream.
    */
   static get stream(): Stream {
-    return OdinClient._mainStream;
+    return this._mainStream;
   }
 
   /**
@@ -65,53 +69,48 @@ export class OdinClient {
    * @private
    */
   private static async connect(token: string, ms: MediaStream, audioSettings?: OdinAudioSettings): Promise<OdinRoom[]> {
-    if (OdinClient.state === OdinConnectionState.connected) {
-      return OdinClient._rooms;
+    if (this.state === OdinConnectionState.connected) {
+      return this._rooms;
     }
 
-    OdinClient._worker = new Worker(workerScript);
-    OdinClient._rtcHandler = new RtcHandler(OdinClient._worker);
-    OdinClient._audioService = AudioService.setInstance(
-      ms,
-      OdinClient._worker,
-      OdinClient._rtcHandler.audioChannel,
-      audioSettings
-    );
+    this._worker = new Worker(workerScript);
+    this._rtcHandler = new RtcHandler(OdinClient._worker);
+    this._audioService = AudioService.setInstance(ms, this._worker, this._rtcHandler.audioChannel, audioSettings);
     OdinClient.state = OdinConnectionState.connecting;
 
     try {
-      const gatewayAuthResult = await OdinClient.authGateway(token);
+      const gatewayAuthResult = await this.authGateway(token);
 
-      OdinClient._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, OdinClient.mainHandler);
+      this._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, this.mainHandler);
 
-      OdinClient._mainStream.onclose = () => {
-        OdinClient.state = OdinConnectionState.disconnected;
-        OdinClient.disconnect();
+      this._mainStream.onclose = () => {
+        this.state = OdinConnectionState.disconnected;
+        this.disconnect();
       };
 
-      OdinClient._mainStream.onerror = () => {
-        OdinClient.state = OdinConnectionState.error;
-        OdinClient.disconnect();
+      this._mainStream.onerror = () => {
+        this.state = OdinConnectionState.error;
+        this.disconnect();
       };
 
-      const mainStreamAuthResult = await OdinClient._mainStream.request('Authenticate', {
+      const mainStreamAuthResult = await this._mainStream.request('Authenticate', {
         token: gatewayAuthResult.token,
       });
       const roomIds: string[] = mainStreamAuthResult.room_ids;
 
-      await OdinClient._rtcHandler.startRtc(OdinClient._mainStream);
-      await OdinClient._audioService.setupAudio();
+      await this._rtcHandler.startRtc(this._mainStream);
+      await this._audioService.setupAudio();
 
-      OdinClient._rooms = roomIds.map((roomId) => {
-        return new OdinRoom(roomId, gatewayAuthResult.address, OdinClient._mainStream, OdinClient._worker);
+      this._rooms = roomIds.map((roomId) => {
+        return new OdinRoom(roomId, gatewayAuthResult.address, this._mainStream, this._worker);
       });
 
-      OdinClient.state = OdinConnectionState.connected;
+      this.state = OdinConnectionState.connected;
 
-      return OdinClient._rooms;
+      return this._rooms;
     } catch (e) {
       console.error('Failed to establish main stream connection', e);
-      OdinClient.state = OdinConnectionState.error;
+      this.state = OdinConnectionState.error;
     }
 
     return [];
@@ -137,16 +136,16 @@ export class OdinClient {
     if (OdinClient.rooms.length > 0) {
       throw new Error('Failed to join room; close other open connections first');
     }
-    const rooms = await OdinClient.connect(token, ms, audioSettings);
+    const rooms = await this.connect(token, ms, audioSettings);
     if (rooms.length > 0) {
       await rooms[0].join(userData, position);
       rooms[0].stream.onclose = () => {
-        OdinClient.state = OdinConnectionState.disconnected;
-        OdinClient.disconnect();
+        this.state = OdinConnectionState.disconnected;
+        this.disconnect();
       };
       rooms[0].stream.onerror = () => {
-        OdinClient.state = OdinConnectionState.error;
-        OdinClient.disconnect();
+        this.state = OdinConnectionState.error;
+        this.disconnect();
       };
       return rooms[0];
     } else {
@@ -158,7 +157,11 @@ export class OdinClient {
    * Changes the active capture stream.
    */
   static changeMediaStream(ms: MediaStream) {
-    OdinClient._audioService?.changeMediaStream(ms);
+    if (this.state !== OdinConnectionState.connected) {
+      throw new Error('Failed to update media stream; not connected');
+    }
+
+    this._audioService.changeMediaStream(ms);
   }
 
   /**
@@ -174,10 +177,10 @@ export class OdinClient {
    * @private
    */
   private static async authGateway(token: string): Promise<AuthResult> {
-    if (!OdinClient.config.gatewayUrl) {
+    if (!this.config.gatewayUrl) {
       throw new Error('No gateway URL configured');
     }
-    const response = await fetch(OdinClient.config.gatewayUrl, {
+    const response = await fetch(this.config.gatewayUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -202,24 +205,24 @@ export class OdinClient {
    * Disconnect from all rooms and stops all audio handling.
    */
   static disconnect(): void {
-    OdinClient._rooms.forEach((room) => {
+    this._rooms.forEach((room) => {
       room.reset();
     });
 
-    if (OdinClient._audioService) {
-      OdinClient._audioService.stopAllAudio();
+    if (this._audioService) {
+      this._audioService.stopAllAudio();
     }
-    if (OdinClient._mainStream) {
+    if (this._mainStream) {
       OdinClient._mainStream.close();
     }
-    if (OdinClient._worker) {
+    if (this._worker) {
       OdinClient._worker.terminate();
     }
-    if (OdinClient._rtcHandler) {
+    if (this._rtcHandler) {
       OdinClient._rtcHandler.stopRtc();
     }
 
-    OdinClient._rooms = [];
+    this._rooms = [];
   }
 
   /**
@@ -229,6 +232,6 @@ export class OdinClient {
    * @param handler
    */
   static addEventListener<Event extends keyof ClientEvents>(eventName: Event, handler: ClientEvents[Event]): void {
-    OdinClient._eventTarget.addEventListener(eventName, handler as EventListener);
+    this._eventTarget.addEventListener(eventName, handler as EventListener);
   }
 }
