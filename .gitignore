@@ -1,4 +1,9 @@
+.DS_Store
+.npmrc
+.vscode
 dist
+dist-ssr
 lib
 node_modules
-.DS_Store
+examples/*/package-lock.json
+*.local
