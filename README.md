@@ -83,4 +83,4 @@ Have a quick question? Tweet us at [@4PlayersBiz](https://twitter.com/4PlayersBi
 Don’t use Discord or Twitter? Send us an [email](mailto:odin@4players.io) and we’ll get back to you as soon as possible.
 
 [npm-badge-url]: https://www.npmjs.com/package/@4players/odin
-[license-url]: https://github.com/4Players/odin-tokens/blob/master/LICENSE
+[license-url]: https://github.com/4Players/odin/blob/master/LICENSE
