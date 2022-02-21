@@ -1,6 +1,6 @@
 {
   "name": "@4players/odin",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "A cross-platform SDK enabling developers to integrate real-time VoIP chat technology into their projects",
   "author": "Josho Bleicker <josho.bleicker@4players.io> (https://www.4players.io)",
   "homepage": "https://www.4players.io",
@@ -24,6 +24,7 @@
   "types": "./lib/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "bundle": "tsc && browserify lib/index.js -p esmify -o dist/odin.js --standalone ODIN && uglifyjs dist/odin.js -o dist/odin.min.js",
     "lint": "eslint . --ext .ts"
   },
   "engines": {
@@ -32,13 +33,16 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
+    "browserify": "^17.0.0",
     "eslint": "^7.32.0",
     "eslint-config-semistandard": "^16.0.0",
     "eslint-plugin-import": "^2.25.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.2.0",
+    "esmify": "^2.1.0",
     "ts-node": "^10.5.0",
-    "typescript": "^4.5.0"
+    "typescript": "^4.5.0",
+    "uglify-js": "^3.15.0"
   },
   "dependencies": {
     "bowser": "^2.11.0",
