@@ -136,6 +136,17 @@ export class OdinRoom {
   }
 
   /**
+   * Changes the active capture stream.
+   */
+  changeMediaStream(ms: MediaStream) {
+    if (this._connectionState !== OdinConnectionState.connected) {
+      throw new Error('Unable to change media stream; room is not connected');
+    }
+
+    this._audioService.changeMediaStream(ms);
+  }
+
+  /**
    * Creates a new local media using the specified stream.
    */
   createMedia(): OdinMedia {
