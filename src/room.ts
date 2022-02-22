@@ -422,13 +422,13 @@ export class OdinRoom {
         }
         break;
       }
-      case 'PeerUserDataChanged': {
+      case 'UserDataChanged': {
         peer.data = update.user_data;
         peer.eventTarget.dispatchEvent(
           new OdinEvent<IOdinPeerDataChangedEventPayload>('UserDataChanged', { room: this, peer })
         );
         this.eventTarget.dispatchEvent(
-          new OdinEvent<IOdinPeerDataChangedEventPayload>('UserDataChanged', { room: this, peer })
+          new OdinEvent<IOdinPeerDataChangedEventPayload>('PeerUserDataChanged', { room: this, peer })
         );
         break;
       }
