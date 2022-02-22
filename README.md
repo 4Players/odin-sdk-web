@@ -12,7 +12,7 @@
 
 > Please note that ODIN is currently in **Beta** and features are being added over time.
 
-## Example
+## TypeScript Example
 
 ```typescript
 import { OdinClient } from '@4players/odin';
@@ -34,33 +34,33 @@ const odinRoom = await OdinClient.joinRoom(token, mediaStream);
 await odinRoom.createMedia().start();
 
 // Start processing voice data of remote peers that were already in the room
-odinRoom.peers.forEach((peer) => {
+odinRoom.remotePeers.forEach((peer) => {
   peer.startMedias();
 });
 
 // Handle events for new peers joining the room
 odinRoom.addEventListener('PeerJoined', (event) => {
-  console.log(`Peer ${event.detail.peer.id} joined`);
+  console.log(`Peer ${event.payload.peer.id} joined`);
 });
 
 // Handle events for peers leaving the room
 odinRoom.addEventListener('PeerLeft', (event) => {
-  console.log(`Peer ${event.detail.peer.id} left`);
+  console.log(`Peer ${event.payload.peer.id} left`);
 });
 
 // Handle events for medias added by remote peers (e.g. start processing voice data)
 odinRoom.addEventListener('MediaStarted', (event) => {
-  event.detail.media.start();
+  event.payload.media.start();
 });
 
 // Handle events for medias removed by remote peers (e.g. stop processing voice data)
 odinRoom.addEventListener('MediaStopped', (event) => {
-  event.detail.media.stop();
+  event.payload.media.stop();
 });
 
 // Handle events for media activity (e.g. user starts/stops talking)
 odinRoom.addEventListener('MediaActivity', (event) => {
-  console.log(`Peer ${event.detail.peer.id} ${event.detail.isActive ? 'started' : 'stopped'} talking on media ${event.detail.media.id}`);
+  console.log(`Peer ${event.payload.peer.id} ${event.payload.active ? 'started' : 'stopped'} talking on media ${event.payload.media.id}`);
 });
 ```
 
