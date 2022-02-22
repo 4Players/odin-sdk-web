@@ -119,7 +119,7 @@ export class OdinClient {
       await this._audioService.setupAudio();
 
       this._rooms = roomIds.map((roomId) => {
-        return new OdinRoom(roomId, gatewayAuthResult.address, this._worker);
+        return new OdinRoom(roomId, token, gatewayAuthResult.address, this._worker);
       });
 
       this.connectionState = OdinConnectionState.connected;
@@ -154,8 +154,25 @@ export class OdinClient {
       throw new Error('Failed to join room; close other open connections first');
     }
     const rooms = await this.connect(token, ms, audioSettings);
+
+    if (!userData) {
+      userData = new Uint8Array();
+    }
+    if (!position) {
+      const a = this.randomIntFromInterval(0, 2 * Math.PI);
+      const x = Math.cos(a) * 0.5;
+      const y = Math.sin(a) * 0.5;
+      position = [x, y];
+    }
+
     if (rooms.length > 0) {
-      await rooms[0].join(userData, position);
+      const { stream_id } = await this._mainStream.request('JoinRoom', {
+        room_id: rooms[0].id,
+        user_data: userData,
+        position: position,
+      });
+
+      await rooms[0].join(stream_id, userData);
 
       rooms[0].addEventListener('ConnectionStateChanged', (event) => {
         if (
@@ -210,12 +227,12 @@ export class OdinClient {
   }
 
   /**
-   * Exececute a command on the main stream.
+   * Returns a random int value.
    *
-   * @ignore
+   * @private
    */
-  static request(method: string, params: any): any {
-    return this._mainStream.request(method, params);
+  private static randomIntFromInterval(min: number, max: number) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
   }
 
   /**

@@ -14,19 +14,17 @@ import {
   IOdinPeerDataChangedEventPayload,
 } from './types';
 import { AudioService } from './audio-service';
-import { OdinClient } from './client';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
 import { Stream } from './stream';
-import { openStream } from './utils';
-import { OdinRoomJoinedLeftEvent } from '.';
+import { openStream, parseJwt } from './utils';
 
 /**
  * Class describing an `OdinRoom`.
  */
 export class OdinRoom {
   private _ownPeer!: OdinPeer;
-  private _customer: String = '';
+  private _customer: string = '';
   private _data: Uint8Array = new Uint8Array();
   private _remotePeers: Map<number, OdinPeer> = new Map();
   private _roomStream!: Stream;
@@ -38,10 +36,11 @@ export class OdinRoom {
    * Creates a new `OdinRoom` instance.
    *
    * @param _id      The ID of the new room
+   * @param _token   The token used to authenticate
    * @param _address The address of the ODIN server this room lives on
-   * @param _worker  An instance of the internal worker handing audo I/O
+   * @param _worker  An instance of the internal worker handing audio I/O
    */
-  constructor(private _id: string, private _address: string, private _worker: Worker) {
+  constructor(private _id: string, private _token: string, private _address: string, private _worker: Worker) {
     const audioService = AudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
@@ -139,23 +138,12 @@ export class OdinRoom {
   /**
    * Joins the room and returns your own peer instance after the room was successfully joined.
    *
-   * @param   userData Optional user data to set for the peer when connecting
-   * @param   position Optional coordinates to set the two-dimensional position of the peer in the room when connecting
-   * @returns Returns your own peer
+   * @ignore
    */
-  async join(userData?: Uint8Array, position?: [number, number]): Promise<OdinPeer | null> {
+  async join(streamId: any, userData: Uint8Array): Promise<OdinPeer | null> {
     this.connectionState = OdinConnectionState.connecting;
-    if (!userData) {
-      userData = new Uint8Array();
-    }
-    if (!position) {
-      const a = OdinRoom.randomIntFromInterval(0, 2 * Math.PI);
-      const x = Math.cos(a) * 0.5;
-      const y = Math.sin(a) * 0.5;
-      position = [x, y];
-    }
     try {
-      this._roomStream = await this.connectRoom(this._address, this._id, userData, position);
+      this._roomStream = await openStream(`wss://${this._address}?${streamId}`, this.streamHandler.bind(this));
       await new Promise((resolve) => this._eventTarget.addEventListener('Joined', resolve, { once: true }));
       if (this._ownPeer) {
         this._ownPeer.data = userData;
@@ -227,27 +215,6 @@ export class OdinRoom {
   }
 
   /**
-   * Joins a room and opens the room stream.
-   *
-   * @private
-   */
-  private async connectRoom(
-    address: string,
-    roomId: string,
-    userData: Uint8Array,
-    position: [number, number]
-  ): Promise<Stream> {
-    const params = {
-      room_id: roomId,
-      user_data: userData,
-      position: position,
-    };
-
-    const { stream_id } = await OdinClient.request('JoinRoom', params);
-    return openStream(`wss://${address}?${stream_id}`, this.streamHandler.bind(this));
-  }
-
-  /**
    * Updates the two-dimensional position of our own `OdinPeer` in the room to apply server-side culling.
    *
    * @param offsetX
@@ -257,15 +224,6 @@ export class OdinRoom {
     this._roomStream?.request('SetPeerPosition', {
       position: [offsetX, offsetY],
     });
-  }
-
-  /**
-   * Returns a randon int value.
-   *
-   * @private
-   */
-  private static randomIntFromInterval(min: number, max: number) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
   }
 
   /**
@@ -287,7 +245,7 @@ export class OdinRoom {
   }
 
   /**
-   * Sends a message with arbitrary datato all peers in the room or optionally to a list of specified peers.
+   * Sends a message with arbitrary data to all peers in the room or optionally to a list of specified peers.
    *
    * @param message       Byte array of arbitrary data to send
    * @param targetPeerIds Optional list of target peer IDs
@@ -349,12 +307,14 @@ export class OdinRoom {
   private roomUpdated(roomUpdate: RoomUpdate): void {
     switch (roomUpdate.kind) {
       case 'Joined': {
-        this._ownPeer = new OdinPeer(roomUpdate.own_peer_id);
+        const payload = parseJwt(this._token);
+        const userId = payload.uid ?? '';
+        this._ownPeer = new OdinPeer(roomUpdate.own_peer_id, userId);
         this._ownPeer.setFreeMediaIds(roomUpdate.media_ids);
         this._data = roomUpdate.room.user_data;
         this._customer = roomUpdate.room.customer;
         for (const peer of roomUpdate.room.peers) {
-          this.addPeer(peer.id, peer.medias, peer.user_data);
+          this.addPeer(peer.id, peer.user_id, peer.medias, peer.user_data);
         }
         this.eventTarget.dispatchEvent(new OdinEvent<IOdinRoomJoinedLeftEventPayload>('Joined', { room: this }));
         break;
@@ -367,7 +327,12 @@ export class OdinRoom {
         break;
       }
       case 'PeerJoined': {
-        const peer = this.addPeer(roomUpdate.peer.id, roomUpdate.peer.medias, roomUpdate.peer.user_data);
+        const peer = this.addPeer(
+          roomUpdate.peer.id,
+          roomUpdate.peer.user_id,
+          roomUpdate.peer.medias,
+          roomUpdate.peer.user_data
+        );
         if (peer) {
           this.eventTarget.dispatchEvent(
             new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerJoined', { room: this, peer })
@@ -452,14 +417,15 @@ export class OdinRoom {
    * Creates a new peer instance and adds it to the room.
    *
    * @param peerId The ID of the peer
+   * @param userId The identifier of the peer specified during authentication
    * @param medias A list of media IDs to initialize for the peer
    * @param data   The user data for the peer
    */
-  private addPeer(peerId: number, medias: { id: number }[], data: Uint8Array): OdinPeer | undefined {
+  private addPeer(peerId: number, userId: string, medias: { id: number }[], data: Uint8Array): OdinPeer | undefined {
     if (peerId === this._ownPeer.id) {
       return;
     }
-    const peer = new OdinPeer(peerId);
+    const peer = new OdinPeer(peerId, userId);
     peer.data = data;
     medias.forEach((media) => {
       const mediaInstance = new OdinMedia(media.id, peerId, true);
@@ -501,15 +467,6 @@ export class OdinRoom {
    */
   enableVAD() {
     this._audioService.enablesVAD();
-  }
-
-  /**
-   * Exececute a command on the room stream.
-   *
-   * @ignore
-   */
-  request(method: string, params: any): any {
-    return this._roomStream.request(method, params);
   }
 
   /**

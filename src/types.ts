@@ -81,7 +81,7 @@ export interface IPeerData {
  */
 export interface IRoomData {
   id: string;
-  customer: String;
+  customer: string;
   user_data: Uint8Array;
   peers: IPeerData[];
 }

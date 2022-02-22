@@ -18,7 +18,7 @@ export class OdinPeer {
    * @param _id The ID of the new peer
    * @ignore
    */
-  constructor(private _id: number) {
+  constructor(private _id: number, private _userId: string) {
     const audioService = AudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
@@ -30,6 +30,13 @@ export class OdinPeer {
    */
   get id(): number {
     return this._id;
+  }
+
+  /**
+   * The identifier of the peer.
+   */
+  get userId(): string {
+    return this._userId;
   }
 
   /**
