@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1
+
+- Changed npm `bundle` script to use rollup and terser instead of browserify.
+- Fixed a bug where `OdinPeerDataChangedEvent` was not fired.
+- Added `OdinPeer.userId` which stores the peers individual identifier string using during authentication.
+- Updated example with options to set user data and user ID.
+
 ## 0.6.0
 
 - Renamed `OdinRoom.me` to `OdinRoom.ownPeer`.
@@ -13,7 +20,7 @@
 
 ## 0.5.5
 
-- Added npm `bundle` script to create standalone broser bundles.
+- Added npm `bundle` script to create standalone browser bundles.
 
 ## 0.5.4
 
