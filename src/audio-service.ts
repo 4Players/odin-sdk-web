@@ -1,4 +1,9 @@
-import { OdinAudioSettings, OdinEvent } from './types';
+import {
+  IOdinAudioSettings,
+  IOdinAudioStatsEventPayload,
+  IOdinMediaActivityChangedEventPayload,
+  OdinEvent,
+} from './types';
 import { OdinRoom } from './room';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
@@ -19,8 +24,7 @@ export class AudioService {
   private _medias: OdinMedia[] = [];
   private _room!: OdinRoom;
   private _bowser!: Bowser.Parser.Parser;
-  private _audioSettings!: OdinAudioSettings;
-  private _defaultOdinAudioSettings: OdinAudioSettings = {
+  private _audioSettings: IOdinAudioSettings = {
     masterVolume: 1,
     voiceActivityDetection: true,
   };
@@ -29,17 +33,14 @@ export class AudioService {
     private _ms: MediaStream,
     private _worker: Worker,
     private _audioDataChannel: RTCDataChannel,
-    audioSettings?: OdinAudioSettings
+    audioSettings?: IOdinAudioSettings
   ) {
-    this._audioSettings = this._defaultOdinAudioSettings;
-    if (audioSettings) {
-      if (typeof audioSettings.masterVolume === 'number') {
-        this._audioSettings.masterVolume = audioSettings.masterVolume;
-      } else {
-        this._audioSettings.masterVolume = this._defaultOdinAudioSettings.masterVolume;
-      }
-      this._audioSettings.voiceActivityDetection =
-        audioSettings.voiceActivityDetection ?? this._defaultOdinAudioSettings.voiceActivityDetection;
+    if (typeof audioSettings?.masterVolume !== 'undefined') {
+      this._audioSettings.masterVolume = parseFloat(String(audioSettings.masterVolume));
+    }
+
+    if (typeof audioSettings?.masterVolume !== 'undefined') {
+      this._audioSettings.voiceActivityDetection = !!audioSettings.voiceActivityDetection;
     }
 
     if (!this._audioSettings.voiceActivityDetection) {
@@ -56,30 +57,12 @@ export class AudioService {
           }
           break;
         case 'stats':
-          this._room.eventTarget.dispatchEvent(new OdinEvent('AudioStats', { stats: event.data }));
+          this._room.eventTarget.dispatchEvent(
+            new OdinEvent<IOdinAudioStatsEventPayload>('AudioStats', { room: this._room, stats: event.data })
+          );
           break;
         case 'talk_status':
-          for (const media of this._medias) {
-            if (media.id === event.data.media_id) {
-              media.eventTarget.dispatchEvent(
-                new OdinEvent('Activity', {
-                  isActive: event.data.is_talking,
-                })
-              );
-              const peer = this.getPeerByMediaId(media.id);
-              if (peer) {
-                peer.eventTarget.dispatchEvent(
-                  new OdinEvent('MediaActivity', {
-                    media,
-                    isActive: event.data.is_talking,
-                  })
-                );
-                this._room.eventTarget.dispatchEvent(
-                  new OdinEvent('MediaActivity', { peer, media, isActive: event.data.is_talking })
-                );
-              }
-            }
-          }
+          this.updateMediaActivity(event.data.media_id, event.data.is_talking);
           break;
       }
     };
@@ -91,9 +74,9 @@ export class AudioService {
    * @param id The numeric id of the peer
    */
   getPeerByMediaId(id: number): OdinPeer | undefined {
-    if (this._room.me.medias.get(id)) return this._room.me;
+    if (this._room.ownPeer.medias.get(id)) return this._room.ownPeer;
     let peer!: OdinPeer;
-    this._room.peers.forEach((p) => {
+    this._room.remotePeers.forEach((p) => {
       if (p.medias.get(id)) peer = p;
     });
     return peer;
@@ -111,7 +94,7 @@ export class AudioService {
     ms: MediaStream,
     worker: Worker,
     audioChannel: RTCDataChannel,
-    audioSettings?: OdinAudioSettings
+    audioSettings?: IOdinAudioSettings
   ): AudioService {
     this._instance = new AudioService(ms, worker, audioChannel, audioSettings);
     return this._instance;
@@ -135,11 +118,18 @@ export class AudioService {
   }
 
   /**
+   * Returns the underlying room instance.
+   */
+  get room(): OdinRoom {
+    return this._room;
+  }
+
+  /**
    * Sets the room this audio service is dealing with.
    *
    * @param room A room instance
    */
-  setRroom(room: OdinRoom) {
+  set room(room: OdinRoom) {
     this._room = room;
   }
 
@@ -148,8 +138,37 @@ export class AudioService {
    *
    * @param media The media ID to search for.
    */
-  hasMedia(media_id: number): boolean {
-    return !!this._medias.find((media) => media.id === media_id);
+  hasMedia(id: number): boolean {
+    return !!this._medias.find((media) => media.id === id);
+  }
+
+  /**
+   * Updates the activity status of a media and emits the necessary events.
+   *
+   * @param id
+   * @param isActive
+   */
+  updateMediaActivity(id: number, isActive: boolean) {
+    const media = this._medias.find((media) => media.id === id);
+    const peer = this.getPeerByMediaId(id);
+
+    if (!media) {
+      return;
+    }
+
+    media.active = isActive;
+
+    if (peer) {
+      media.eventTarget.dispatchEvent(
+        new OdinEvent<IOdinMediaActivityChangedEventPayload>('Activity', { room: this._room, peer, media })
+      );
+      peer.eventTarget.dispatchEvent(
+        new OdinEvent<IOdinMediaActivityChangedEventPayload>('MediaActivity', { room: this._room, peer, media })
+      );
+      this._room.eventTarget.dispatchEvent(
+        new OdinEvent<IOdinMediaActivityChangedEventPayload>('MediaActivity', { room: this._room, peer, media })
+      );
+    }
   }
 
   /**

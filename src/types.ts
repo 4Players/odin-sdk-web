@@ -1,37 +1,50 @@
-import { OdinMedia } from './media';
+import { OdinRoom } from './room';
 import { OdinPeer } from './peer';
+import { OdinMedia } from './media';
 
 /**
  * Interface describing audio settings to be applied on connect.
  */
-export interface OdinAudioSettings {
+export interface IOdinAudioSettings {
+  /**
+   * The global playback volume for all medias the room (should be between 0 and 2).
+   */
   masterVolume?: number;
+  /**
+   * Enable or disable RNN-based voice activity detection.
+   */
   voiceActivityDetection?: boolean;
 }
 
 /**
- * Interface describing custom options like the worker and worklet script path.
+ * Interface describing custom options for ODIN clients.
  */
-export interface OdinClientSettings {
+export interface IOdinClientSettings {
+  /**
+   * The URL of the ODIN gateway to use.
+   */
   gatewayUrl?: string;
 }
 
 /**
- * Helper class to allow dispatching custom events.
+ * Interface extending default JavaScript events with custom information.
  */
-interface IOdinEvent<T> extends Event {
-  readonly detail: T;
+export interface IOdinEvent<T> extends Event {
+  /**
+   * Custom payload of the event (see `IOdin*Payload` interfaces).
+   */
+  readonly payload: T;
 }
 export class OdinEvent<T> extends Event implements IOdinEvent<T> {
-  constructor(type: string, public readonly detail: T) {
+  constructor(type: string, public readonly payload: T) {
     super(type);
   }
 }
 
 /**
- * Interface describing the authentication respone received from an ODIN gateway.
+ * Interface describing the authentication response received from an ODIN gateway.
  */
-export interface AuthResult {
+export interface IAuthResult {
   address: string;
   token: string;
 }
@@ -39,7 +52,7 @@ export interface AuthResult {
 /**
  * Interface describing a peer in a room.
  */
-export interface Peer {
+export interface IPeer {
   id: number;
   mediaIds: number[];
   userData: Uint8Array;
@@ -48,7 +61,7 @@ export interface Peer {
 /**
  * Interface describing a generic message payload.
  */
-export interface MessageData {
+export interface IMessageData {
   message: Uint8Array;
   target_peer_ids?: number[];
 }
@@ -56,7 +69,7 @@ export interface MessageData {
 /**
  * Interface describing the expected format when receiving peer data from the ODIN server.
  */
-export interface PeerData {
+export interface IPeerData {
   id: number;
   medias: any;
   user_data: Uint8Array;
@@ -66,22 +79,22 @@ export interface PeerData {
 /**
  * Interface describing the expected format when receiving room data from the ODIN server.
  */
-export interface RoomData {
+export interface IRoomData {
   id: string;
   customer: String;
   user_data: Uint8Array;
-  peers: PeerData[];
+  peers: IPeerData[];
 }
 
 /**
  * Interface describing an error which could occur when trying to join a room.
  */
-export interface RoomJoinError {
+export interface IRoomJoinError {
   reason: string;
 }
 
 /**
- * Possible events reveiced from the ODIN server.
+ * Possible events received from the ODIN server.
  */
 export type OdinEventMethods = 'RoomUpdated' | 'PeerUpdated' | 'MessageReceived';
 
@@ -90,7 +103,7 @@ export type OdinEventMethods = 'RoomUpdated' | 'PeerUpdated' | 'MessageReceived'
  */
 export interface RoomJoinedUpdate {
   kind: 'Joined';
-  room: RoomData;
+  room: IRoomData;
   media_ids: number[];
   own_peer_id: number;
 }
@@ -103,7 +116,7 @@ export interface RoomDataChangedUpdate {
 }
 export interface RoomPeerJoinedUpdate {
   kind: 'PeerJoined';
-  peer: PeerData;
+  peer: IPeerData;
 }
 export interface RoomPeerLeftUpdate {
   kind: 'PeerLeft';
@@ -119,7 +132,10 @@ export type RoomUpdate =
 /**
  * Interface describing encoder/decoder statistics from the audio worker.
  */
-export interface OdinAudioStats {
+export interface IOdinAudioStats {
+  /**
+   * Internal Opus decoder statistics.
+   */
   decoder: {
     avg_decode_time: number;
     cache_length: number;
@@ -128,6 +144,9 @@ export interface OdinAudioStats {
     packets_lost: number;
     packets_processed: number;
   };
+  /**
+   * Internal Opus encoder statistics.
+   */
   encoder: {
     avg_encode_time: number;
     cbr: boolean;
@@ -142,145 +161,319 @@ export interface OdinAudioStats {
  * Enum defining all possible connection states of the ODIN client.
  */
 export enum OdinConnectionState {
+  /**
+   * Connection is closed.
+   */
   disconnected,
+  /**
+   * Connection is being established.
+   */
   connecting,
+  /**
+   * Connection is established.
+   */
   connected,
+  /**
+   * Connection is in an error state.
+   */
   error,
 }
 
 /**
- * Event emitted when the connection status of the ODIN client changes.
+ * Interface describing the payload of an `OdinConnectionStateChangedEvent`.
  */
-export type OdinConnectionStateChangedEvent = (event: IOdinEvent<{ state: OdinConnectionState }>) => void;
+export interface IOdinConnectionStateChangedEventPayload {
+  /**
+   * Previous state of the connection.
+   */
+  oldState: OdinConnectionState;
+  /**
+   * Current state of the connection.
+   */
+  newState: OdinConnectionState;
+}
 
 /**
- * Event emitted when the sending/receiving status of a media changes (e.g. when a user starts/stops talking).
+ * Event emitted when the connection status of the internal main/room stream was updated.
  *
- * Provides the new state of the media as a boolean.
+ * Provides both the old and the new connection state.
  */
-export type MediaActivityEvent = (event: IOdinEvent<{ isActive: boolean }>) => void;
+export type OdinConnectionStateChangedEvent = (event: IOdinEvent<IOdinConnectionStateChangedEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinRoomJoinedLeftEvent`.
+ */
+export interface IOdinRoomJoinedLeftEventPayload {
+  /**
+   * The room that was joined/left.
+   */
+  room: OdinRoom;
+}
+
+/**
+ * Event emitted when a room was joined/left and its internal instance is up-to-date.
+ *
+ * Provides the new `OdinRoom` instance.
+ */
+export type OdinRoomJoinedLeftEvent = (event: IOdinEvent<IOdinRoomJoinedLeftEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinRoomDataChangedEvent`.
+ */
+export interface IOdinRoomDataChangedEventPayload {
+  /**
+   * The updated `OdinRoom` instance.
+   */
+  room: OdinRoom;
+}
+
+/**
+ * Event emitted when the user data of a room was updated.
+ *
+ * Provides the updated `OdinRoom` instance.
+ */
+export type OdinRoomDataChangedEvent = (event: IOdinEvent<IOdinRoomDataChangedEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinPeerJoinedLeftEvent`.
+ */
+export interface IOdinPeerJoinedLeftEventPayload {
+  /**
+   * The room the peer joined/left.
+   */
+  room: OdinRoom;
+  /**
+   * The peer that joined/left.
+   */
+  peer: OdinPeer;
+}
+
+/**
+ * Event emitted whenever a remote peer joined/left the room.
+ *
+ * Provides the updated `OdinRoom` instance and the specific `OdinPeer` instance.
+ */
+export type OdinPeerJoinedLeftEvent = (event: IOdinEvent<IOdinPeerJoinedLeftEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinPeerDataChangedEvent`.
+ */
+export interface IOdinPeerDataChangedEventPayload {
+  /**
+   * The room where the peer was updated.
+   */
+  room: OdinRoom;
+  /**
+   * The updated `OdinPeer` instance.
+   */
+  peer: OdinPeer;
+}
+
+/**
+ * Event emitted when the user data of a remote peer was updated.
+ *
+ * Provides the updated `OdinPeer` instance.
+ */
+export type OdinPeerDataChangedEvent = (event: IOdinEvent<IOdinPeerDataChangedEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinMediaStartedStoppedEvent`.
+ */
+export interface IOdinMediaStartedStoppedEventPayload {
+  /**
+   * The room where the media was added/removed.
+   */
+  room: OdinRoom;
+  /**
+   * The peer that owns the media.
+   */
+  peer: OdinPeer;
+  /**
+   * The media that was added/removed.
+   */
+  media: OdinMedia;
+}
 
 /**
  * Event emitted whenever a peer adds/removes a media stream.
  *
- * Provides the media object.
+ * Provides the updated `OdinRoom`, `OdinPeer` and `OdinMedia` instances.
  */
-export type PeerMediaChangedEvent = (event: IOdinEvent<{ media: OdinMedia }>) => void;
+export type OdinMediaStartedStoppedEvent = (event: IOdinEvent<IOdinMediaStartedStoppedEventPayload>) => void;
 
 /**
- * Event emitted when the sending/receiving status of any media belonging to a specific peer changes.
- *
- * Provides the media object and the new state as a boolean.
+ * Interface describing the payload of an `OdinMediaActivityChangedEvent`.
  */
-export type PeerMediaActivityEvent = (event: IOdinEvent<{ media: OdinMedia; isActive: boolean }>) => void;
+export interface IOdinMediaActivityChangedEventPayload {
+  /**
+   * The room the media is added to.
+   */
+  room: OdinRoom;
+  /**
+   * The peer that owns the media.
+   */
+  peer: OdinPeer;
+  /**
+   * The media that was updated.
+   */
+  media: OdinMedia;
+}
 
 /**
- * Event emitted whenever a peer in the room adds/removes a media stream.
+ * Event emitted when the sending/receiving status of a media changes (e.g. when a user starts/stops talking).
  *
- * Provides the updated room user data.
+ * Provides the updated `OdinRoom`, `OdinPeer` and `OdinMedia` instances as well as the new state.
  */
-export type RoomMediaChangedEvent = (event: IOdinEvent<{ peer: OdinPeer; media: OdinMedia }>) => void;
+export type OdinMediaActivityChangedEvent = (event: IOdinEvent<IOdinMediaActivityChangedEventPayload>) => void;
 
 /**
- * Event emitted when the sending/receiving status of any media belonging to a peer in the room changes.
- *
- * Provides the media object and the new state as a boolean.
+ * Interface describing the payload of an `OdinMessageReceivedEvent`.
  */
-export type RoomMediaActivityEvent = (
-  event: IOdinEvent<{ peer: OdinPeer; media: OdinMedia; isActive: boolean }>
-) => void;
-
-/**
- * Event emitted whenever a peer joins/leaves the room.
- *
- * Provides the specific peer and the updated map of peers in the room.
- */
-export type RoomPeerJoinedLeftEvent = (event: IOdinEvent<{ peer: OdinPeer; peers: Map<number, OdinPeer> }>) => void;
-
-/**
- * Event emitted when a room was joined.
- *
- * Provides the initial room user data and ID.
- */
-export type RoomJoinedEvent = (event: IOdinEvent<{ id: string; data: Uint8Array }>) => void;
-
-/**
- * Event emitted when the user data of a room is updated.
- *
- * Provides the updated room user data.
- */
-export type RoomDataUpdatedEvent = (event: IOdinEvent<{ data: Uint8Array }>) => void;
-
-/**
- * Event emitted when the user data of a peer is updated.
- *
- * Provides the updated peer oject.
- */
-export type PeerDataUpdatedEvent = (event: IOdinEvent<{ peer: OdinPeer }>) => void;
-
-/**
- * Event emitted whenever a message with arbitrary data is received from a specific peer.
- *
- * Provides the raw message data.
- */
-export type PeerMessageEvent = (event: IOdinEvent<{ message: Uint8Array }>) => void;
+export interface IOdinMessageReceivedEventPayload {
+  /**
+   * The room where the message was received.
+   */
+  room: OdinRoom;
+  /**
+   * The ID of the peer that sent the message (might not be in proximity).
+   */
+  senderId: number;
+  /**
+   * A byte array with the message.
+   */
+  message: Uint8Array;
+}
 
 /**
  * Event emitted whenever a message with arbitrary data is received.
  *
- * Provides the sender peer id and the raw message data.
+ * Provides the `OdinRoom` instance where the message was received, the sender peer ID and the actual message data.
  */
-export type RoomMessageEvent = (event: IOdinEvent<{ sender: OdinPeer; message: Uint8Array }>) => void;
+export type OdinMessageReceivedEvent = (event: IOdinEvent<IOdinMessageReceivedEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinAudioStatsEvent`.
+ */
+export interface IOdinAudioStatsEventPayload {
+  /**
+   * The `OdinRoom` instace the stats ere coming from.
+   */
+  room: OdinRoom;
+  /**
+   * The internal Opus encoder/decoder stats.
+   */
+  stats: IOdinAudioStats;
+}
 
 /**
  * Event emitted in a configurable interval to monitor encoder/decoder statistics.
  *
  * Provides the updated stats of the encoder and decoder.
  */
-export type RoomAudioStatsEvent = (event: IOdinEvent<{ stats: OdinAudioStats }>) => void;
-
-/**
- * Interface describing possible room events.
- */
-export interface RoomEvents {
-  Joined: RoomJoinedEvent;
-  UserDataChanged: RoomDataUpdatedEvent;
-  PeerJoined: RoomPeerJoinedLeftEvent;
-  PeerLeft: RoomPeerJoinedLeftEvent;
-  MediaStarted: RoomMediaChangedEvent;
-  MediaStopped: RoomMediaChangedEvent;
-  MediaActivity: RoomMediaActivityEvent;
-  MessageReceived: RoomMessageEvent;
-  AudioStats: RoomAudioStatsEvent;
-}
-
-/**
- * Interface descrinbing possible peer events.
- */
-export interface PeerEvents {
-  MediaStarted: PeerMediaChangedEvent;
-  MediaStopped: PeerMediaChangedEvent;
-  MediaActivity: PeerMediaActivityEvent;
-  UserDataChanged: PeerDataUpdatedEvent;
-  MessageReceived: PeerMessageEvent;
-}
+export type OdinAudioStatsEvent = (event: IOdinEvent<IOdinAudioStatsEventPayload>) => void;
 
 /**
  * Interface describing possible media events.
  */
-export interface MediaEvents {
-  Activity: MediaActivityEvent;
-}
-
-/**
- * Interface describing possible media events.
- */
-export interface ClientEvents {
+export interface IOdinClientEvents {
+  /**
+   * Main stream connection state updates.
+   */
   ConnectionStateChanged: OdinConnectionStateChangedEvent;
 }
 
 /**
- * Convinience type used when converting JSON data to byte arrays.
+ * Interface describing possible room events.
+ */
+export interface IOdinRoomEvents {
+  /**
+   * Room stream connection state updates.
+   */
+  ConnectionStateChanged: OdinConnectionStateChangedEvent;
+  /**
+   * The room was joined successfully.
+   */
+  Joined: OdinRoomJoinedLeftEvent;
+  /**
+   * The room was left.
+   */
+  Left: OdinRoomJoinedLeftEvent;
+  /**
+   * The global room user data was updated.
+   */
+  UserDataChanged: OdinRoomDataChangedEvent;
+  /**
+   * A new peer entered the room.
+   */
+  PeerJoined: OdinPeerJoinedLeftEvent;
+  /**
+   * A peer in the room updated its user data.
+   */
+  PeerUserDataChanged: OdinPeerDataChangedEvent;
+  /**
+   * A peer left the room.
+   */
+  PeerLeft: OdinPeerJoinedLeftEvent;
+  /**
+   * A new media stream was added to the room.
+   */
+  MediaStarted: OdinMediaStartedStoppedEvent;
+  /**
+   * A media stream was removed from the room.
+   */
+  MediaStopped: OdinMediaStartedStoppedEvent;
+  /**
+   * A media in the room is sending/receiving data.
+   */
+  MediaActivity: OdinMediaActivityChangedEvent;
+  /**
+   * Received a message with arbitrary data.
+   */
+  MessageReceived: OdinMessageReceivedEvent;
+  /**
+   * Internal encoder/decoder stats updates.
+   */
+  AudioStats: OdinAudioStatsEvent;
+}
+
+/**
+ * Interface describing possible peer events.
+ */
+export interface IOdinPeerEvents {
+  /**
+   * Peer updated its user data.
+   */
+  UserDataChanged: OdinPeerDataChangedEvent;
+  /**
+   * Peer added a new media stream.
+   */
+  MediaStarted: OdinMediaStartedStoppedEvent;
+  /**
+   * Peer removed a media stream.
+   */
+  MediaStopped: OdinMediaStartedStoppedEvent;
+  /**
+   * A media owned by the peer is sending/receiving data.
+   */
+  MediaActivity: OdinMediaActivityChangedEvent;
+  /**
+   * Peer sent a message with arbitrary data.
+   */
+  MessageReceived: OdinMessageReceivedEvent;
+}
+
+/**
+ * Interface describing possible media events.
+ */
+export interface IOdinMediaEvents {
+  /**
+   * The media is sending/receiving data.
+   */
+  Activity: OdinMediaActivityChangedEvent;
+}
+
+/**
+ * Convenience type used when converting JSON data to byte arrays.
  */
 export type JsonValue =
   | string

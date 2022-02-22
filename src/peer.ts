@@ -1,10 +1,9 @@
-import { OdinEvent, PeerEvents } from './types';
+import { IOdinPeerEvents } from './types';
 import { AudioService } from './audio-service';
 import { OdinMedia } from './media';
-import { Stream } from './stream';
 
 /**
- * The Peer class manages a peer in the ODIN context.
+ * Class describing a single peer inside an `OdinRoom`.
  */
 export class OdinPeer {
   private _freeMediaIds: number[] = [];
@@ -14,12 +13,12 @@ export class OdinPeer {
   private _audioService!: AudioService;
 
   /**
-   * Creates a new OdinPeer instance.
+   * Creates a new `OdinPeer` instance.
    *
-   * @param _id
-   * @param _roomStream
+   * @param _id The ID of the new peer
+   * @ignore
    */
-  constructor(private _id: number, private _roomStream: Stream) {
+  constructor(private _id: number) {
     const audioService = AudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
@@ -27,14 +26,14 @@ export class OdinPeer {
   }
 
   /**
-   * Get the peer ID.
+   * The ID of the peer.
    */
   get id(): number {
     return this._id;
   }
 
   /**
-   * Returns a list of medias owned by the peer.
+   * A list of media instances owned by the peer.
    */
   get medias(): Map<number, OdinMedia> {
     return this._activeMedias;
@@ -48,14 +47,16 @@ export class OdinPeer {
   }
 
   /**
-   * Returns the current user data of the peer.
+   * The arbitrary user data of the peer.
    */
   get data(): Uint8Array {
     return this._data;
   }
 
   /**
-   * Returns the event handler of the peer.
+   * An event target handler for the peer.
+   *
+   * @ignore
    */
   get eventTarget(): EventTarget {
     return this._eventTarget;
@@ -63,7 +64,8 @@ export class OdinPeer {
 
   /**
    * Set the list of media IDs assigned by the server.
-   * @param ids
+   *
+   * @ignore
    */
   setFreeMediaIds(ids: number[]) {
     if (this._freeMediaIds.length > 0) return;
@@ -82,7 +84,7 @@ export class OdinPeer {
 
     const freeMediaId = this.takeFreeMedia();
     if (!freeMediaId) throw new Error('Unable to create new media; no more media IDs available');
-    const newMedia = new OdinMedia(freeMediaId, this._id, false, this._audioService.audioWorker, this._roomStream);
+    const newMedia = new OdinMedia(freeMediaId, this._id, false);
     this._activeMedias.set(newMedia.id, newMedia);
     return newMedia;
   }
@@ -90,22 +92,20 @@ export class OdinPeer {
   /**
    * Adds a media to the list of active medias and starts decoding.
    *
-   * @param media The media that gets added
+   * @param media The media instance to add
    */
   addMedia(media: OdinMedia): void {
     this._activeMedias.set(media.id, media);
-    this._eventTarget.dispatchEvent(new OdinEvent('MediaStarted', { media }));
   }
 
   /**
    * Removes a media from the list of active medias and stops decoding.
    *
-   * @param media The media that gets removed
+   * @param media The media instance to remove
    */
   removeMedia(media: OdinMedia): void {
     this._audioService.unregisterMedia(media);
     this._activeMedias.delete(media.id);
-    this._eventTarget.dispatchEvent(new OdinEvent('MediaStopped', { media }));
   }
 
   /**
@@ -166,34 +166,33 @@ export class OdinPeer {
   }
 
   /**
-   * Sends a message to this peer.
+   * Sends a message with arbitrary data to this peer.
    *
-   * @param message The message encoded to an Uint8Array
+   * @param message Byte array of arbitrary data to send
    */
   sendMessage(message: Uint8Array): void {
     if (!message) return;
-    this._roomStream?.request('SendMessage', {
-      message: message,
-      target_peer_ids: [this._id],
-    });
+    this._audioService.room.sendMessage(message, [this._id]);
   }
 
   /**
-   * Updates the peer with the current data
+   * Sends user data of the peer to the server.
    */
   update(): void {
-    this._roomStream?.request('UpdatePeer', {
-      user_data: this._data,
-    });
+    if (this.id !== this._audioService.room.ownPeer.id) {
+      throw new Error('Failed to flush peer user data update; not allowed to update remote peer');
+    }
+
+    this._audioService.room.flushOwnPeerDataUpdate();
   }
 
   /**
-   * Register to media events.
+   * Register to peer events from `IOdinPeerEvents`.
    *
-   * @param eventName
-   * @param handler
+   * @param eventName The name of the event to listen to
+   * @param handler   The callback to handle the event
    */
-  addEventListener<Event extends keyof PeerEvents>(eventName: Event, handler: PeerEvents[Event]): void {
+  addEventListener<Event extends keyof IOdinPeerEvents>(eventName: Event, handler: IOdinPeerEvents[Event]): void {
     this._eventTarget.addEventListener(eventName, handler as EventListener);
   }
 }

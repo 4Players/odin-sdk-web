@@ -1,10 +1,11 @@
 import {
-  AuthResult,
-  ClientEvents,
-  OdinAudioSettings,
-  OdinClientSettings,
+  IAuthResult,
+  IOdinAudioSettings,
+  IOdinClientSettings,
+  IOdinClientEvents,
   OdinConnectionState,
   OdinEvent,
+  IOdinConnectionStateChangedEventPayload,
 } from './types';
 import { AudioService } from './audio-service';
 import { RtcHandler } from './rtc-handler';
@@ -14,10 +15,7 @@ import { openStream } from './utils';
 import { workerScript } from './worker';
 
 /**
- * 4Players ODIN
- * LIFT YOUR PLAYER COMMUNICATION TO THE NEXT LEVEL
- *
- * The OdinClient helps you with connecting and using ODIN in an understandable and easy way.
+ * Class providing static methods to handle ODIN client connections.
  */
 export class OdinClient {
   private static _eventTarget: EventTarget = new EventTarget();
@@ -27,40 +25,55 @@ export class OdinClient {
   private static _audioService: AudioService;
   private static _state: OdinConnectionState = OdinConnectionState.disconnected;
   private static _worker: Worker;
-  static config: OdinClientSettings = {
+
+  /**
+   * @ignore
+   */
+  constructor() {
+    throw new Error('Not allowed to instantiate OdinClient');
+  }
+
+  /**
+   * Global settings for ODIN connections.
+   */
+  static config: IOdinClientSettings = {
     gatewayUrl: 'https://gateway.odin.4players.io',
   };
 
   /**
-   * Returns an array of available rooms.
+   * An array of available `OdinRoom` instances.
    */
   static get rooms(): OdinRoom[] {
     return OdinClient._rooms;
   }
 
   /**
-   * Returns the current state of the connection.
+   * The current state of the main stream connection.
    */
-  static get state(): OdinConnectionState {
+  static get connectionState(): OdinConnectionState {
     return OdinClient._state;
   }
 
   /**
    * Update the state of the connection.
    */
-  private static set state(state: OdinConnectionState) {
-    const oldState = this._state;
+  private static set connectionState(state: OdinConnectionState) {
+    const oldState = this.connectionState;
     this._state = state;
     if (oldState !== state) {
-      this._eventTarget.dispatchEvent(new OdinEvent('ConnectionStateChanged', { state }));
+      this.eventTarget.dispatchEvent(
+        new OdinEvent<IOdinConnectionStateChangedEventPayload>('ConnectionStateChanged', { oldState, newState: state })
+      );
     }
   }
 
   /**
-   * Returns the underlying WebSocket main stream.
+   * Returns the event handler of the client.
+   *
+   * @ignore
    */
-  static get stream(): Stream {
-    return this._mainStream;
+  static get eventTarget(): EventTarget {
+    return this._eventTarget;
   }
 
   /**
@@ -68,15 +81,19 @@ export class OdinClient {
    *
    * @private
    */
-  private static async connect(token: string, ms: MediaStream, audioSettings?: OdinAudioSettings): Promise<OdinRoom[]> {
-    if (this.state === OdinConnectionState.connected) {
+  private static async connect(
+    token: string,
+    ms: MediaStream,
+    audioSettings?: IOdinAudioSettings
+  ): Promise<OdinRoom[]> {
+    if (this.connectionState === OdinConnectionState.connected) {
       return this._rooms;
     }
 
     this._worker = new Worker(workerScript);
     this._rtcHandler = new RtcHandler(OdinClient._worker);
     this._audioService = AudioService.setInstance(ms, this._worker, this._rtcHandler.audioChannel, audioSettings);
-    OdinClient.state = OdinConnectionState.connecting;
+    OdinClient.connectionState = OdinConnectionState.connecting;
 
     try {
       const gatewayAuthResult = await this.authGateway(token);
@@ -84,12 +101,12 @@ export class OdinClient {
       this._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, this.mainHandler);
 
       this._mainStream.onclose = () => {
-        this.state = OdinConnectionState.disconnected;
+        this.connectionState = OdinConnectionState.disconnected;
         this.disconnect();
       };
 
       this._mainStream.onerror = () => {
-        this.state = OdinConnectionState.error;
+        this.connectionState = OdinConnectionState.error;
         this.disconnect();
       };
 
@@ -102,22 +119,22 @@ export class OdinClient {
       await this._audioService.setupAudio();
 
       this._rooms = roomIds.map((roomId) => {
-        return new OdinRoom(roomId, gatewayAuthResult.address, this._mainStream, this._worker);
+        return new OdinRoom(roomId, gatewayAuthResult.address, this._worker);
       });
 
-      this.state = OdinConnectionState.connected;
+      this.connectionState = OdinConnectionState.connected;
 
       return this._rooms;
     } catch (e) {
       console.error('Failed to establish main stream connection', e);
-      this.state = OdinConnectionState.error;
+      this.connectionState = OdinConnectionState.error;
     }
 
     return [];
   }
 
   /**
-   * Authenticates against the gateway and directly connects to the room.
+   * Authenticates against the configured ODIN gateway and joins a room using a specified token.
    *
    * @param token         The room token for authentication
    * @param ms            The capture stream of the input device
@@ -129,7 +146,7 @@ export class OdinClient {
   static async joinRoom(
     token: string,
     ms: MediaStream,
-    audioSettings?: OdinAudioSettings,
+    audioSettings?: IOdinAudioSettings,
     userData?: Uint8Array,
     position?: [number, number]
   ): Promise<OdinRoom> {
@@ -139,29 +156,20 @@ export class OdinClient {
     const rooms = await this.connect(token, ms, audioSettings);
     if (rooms.length > 0) {
       await rooms[0].join(userData, position);
-      rooms[0].stream.onclose = () => {
-        this.state = OdinConnectionState.disconnected;
-        this.disconnect();
-      };
-      rooms[0].stream.onerror = () => {
-        this.state = OdinConnectionState.error;
-        this.disconnect();
-      };
+
+      rooms[0].addEventListener('ConnectionStateChanged', (event) => {
+        if (
+          event.payload.newState === OdinConnectionState.disconnected ||
+          event.payload.newState === OdinConnectionState.error
+        ) {
+          this.connectionState = event.payload.newState;
+          this.disconnect();
+        }
+      });
       return rooms[0];
     } else {
       throw new Error('Failed to join room; specified token did not contain a valid room ID');
     }
-  }
-
-  /**
-   * Changes the active capture stream.
-   */
-  static changeMediaStream(ms: MediaStream) {
-    if (this.state !== OdinConnectionState.connected) {
-      throw new Error('Failed to update media stream; not connected');
-    }
-
-    this._audioService.changeMediaStream(ms);
   }
 
   /**
@@ -176,7 +184,7 @@ export class OdinClient {
    *
    * @private
    */
-  private static async authGateway(token: string): Promise<AuthResult> {
+  private static async authGateway(token: string): Promise<IAuthResult> {
     if (!this.config.gatewayUrl) {
       throw new Error('No gateway URL configured');
     }
@@ -199,6 +207,15 @@ export class OdinClient {
     } else {
       throw new Error(`Gateway authentication failed; ${body.error.message}`);
     }
+  }
+
+  /**
+   * Exececute a command on the main stream.
+   *
+   * @ignore
+   */
+  static request(method: string, params: any): any {
+    return this._mainStream.request(method, params);
   }
 
   /**
@@ -226,12 +243,15 @@ export class OdinClient {
   }
 
   /**
-   * Register to client events.
+   * Register to client events from `IOdinClientEvents`.
    *
-   * @param eventName
-   * @param handler
+   * @param eventName The name of the event to listen to
+   * @param handler   The callback to handle the event
    */
-  static addEventListener<Event extends keyof ClientEvents>(eventName: Event, handler: ClientEvents[Event]): void {
+  static addEventListener<Event extends keyof IOdinClientEvents>(
+    eventName: Event,
+    handler: IOdinClientEvents[Event]
+  ): void {
     this._eventTarget.addEventListener(eventName, handler as EventListener);
   }
 }

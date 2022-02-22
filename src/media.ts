@@ -1,9 +1,8 @@
-import { MediaEvents } from './types';
+import { IOdinMediaEvents } from './types';
 import { AudioService } from './audio-service';
-import { Stream } from './stream';
 
 /**
- * The OdinMedia class manages a media stream in the ODIN context.
+ * Class describing a single media stream inside an `OdinRoom`.
  */
 export class OdinMedia {
   private _eventTarget: EventTarget = new EventTarget();
@@ -12,54 +11,49 @@ export class OdinMedia {
   private _volume = 1;
 
   /**
-   * Creates a new OdinMedia instance.
+   * Creates a new `OdinMedia` instance.
    *
-   * @param _id
-   * @param _peerId
-   * @param _remote
-   * @param _worker
-   * @param _roomStream
-   * @param _options
+   * @param _id     The ID of the new media
+   * @param _peerId The ID of the peer that owns the new media
+   * @param _remote Wether or not the new media belongs to a remote peer
    */
-  constructor(
-    private _id: number,
-    private _peerId: number,
-    private _remote: boolean,
-    private _worker: Worker,
-    private _roomStream: Stream,
-    private _options?: any
-  ) {
+  constructor(private _id: number, private _peerId: number, private _remote: boolean) {
     const audioService = AudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
     }
-
-    this.addEventListener('Activity', (event) => (this._active = event.detail.isActive));
   }
 
   /**
-   * Returns the media ID.
+   * The ID of the media.
    */
   get id(): number {
     return this._id;
   }
 
   /**
-   * Returns the peer ID of the media.
+   * The ID of the peer that owns the media.
    */
   get peerId(): number {
     return this._peerId;
   }
 
   /**
-   * Returns true if the media belongs to a remote peer.
+   * Indicates wether or not the media belongs to a remote peer.
    */
   get remote(): boolean {
     return this._remote;
   }
 
   /**
-   * Returns true if the media is currently sending/receiving data.
+   * Set the activity status of the media.
+   */
+  set active(active: boolean) {
+    this._active = active;
+  }
+
+  /**
+   * Indicates wether or not the media is currently sending/receiving data.
    */
   get active(): boolean {
     return this._active;
@@ -73,24 +67,19 @@ export class OdinMedia {
   }
 
   /**
-   * Returns the event handler of the media.
+   * An event target handler for the peer.
+   *
+   * @ignore
    */
   get eventTarget(): EventTarget {
     return this._eventTarget;
   }
 
   /**
-   * Returns the current volume of the media.
+   * The individual playback volume of the media stream.
    */
   get volume(): number {
     return this._volume;
-  }
-
-  /**
-   * Returns the options of the media.
-   */
-  get options(): any {
-    return this._options;
   }
 
   /**
@@ -102,18 +91,14 @@ export class OdinMedia {
     if (this.registered) return;
 
     if (this._remote) {
-      this._worker.postMessage({
+      this._audioService.audioWorker.postMessage({
         type: 'start_decoder',
         media_id: this._id,
         properties: {},
       });
     } else {
-      await this._roomStream.request('StartMedia', {
-        media_id: this._id,
-        properties: {},
-      });
-
-      this._worker.postMessage({
+      await this._audioService.room.addMedia(this);
+      this._audioService.audioWorker.postMessage({
         type: 'start_encoder',
         media_id: this._id,
         properties: {
@@ -136,24 +121,19 @@ export class OdinMedia {
     if (!this.registered) return;
 
     if (this._remote) {
-      this._worker.postMessage({
+      this._audioService.audioWorker.postMessage({
         type: 'stop_decoder',
         media_id: this._id,
       });
     } else {
-      await this._roomStream.request('StopMedia', {
-        media_id: this._id,
-        properties: {},
-      });
-
-      this._worker.postMessage({
+      await this._audioService.room.removeMedia(this);
+      this._audioService.audioWorker.postMessage({
         type: 'stop_encoder',
         media_id: this._id,
       });
     }
 
     this._audioService.unregisterMedia(this);
-    this._active = false;
   }
 
   /**
@@ -162,7 +142,7 @@ export class OdinMedia {
    * @param volume The new volume (Default is 1)
    */
   changeVolume(volume: number): void {
-    this._worker.postMessage({
+    this._audioService.audioWorker.postMessage({
       type: 'set_volume',
       media_id: this._id,
       value: volume,
@@ -170,12 +150,12 @@ export class OdinMedia {
   }
 
   /**
-   * Register to media events.
+   * Register to media events from `IOdinMediaEvents`.
    *
-   * @param eventName
-   * @param handler
+   * @param eventName The name of the event to listen to
+   * @param handler   The callback to handle the event
    */
-  addEventListener<Event extends keyof MediaEvents>(eventName: Event, handler: MediaEvents[Event]): void {
+  addEventListener<Event extends keyof IOdinMediaEvents>(eventName: Event, handler: IOdinMediaEvents[Event]): void {
     this._eventTarget.addEventListener(eventName, handler as EventListener);
   }
 }
