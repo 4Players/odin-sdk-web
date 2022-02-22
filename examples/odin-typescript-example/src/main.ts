@@ -48,10 +48,10 @@ async function connect(token: string) {
     await odinRoom.createMedia().start();
 
     // Add our own peer to UI
-    addUiPeer(odinRoom.me);
+    addUiPeer(odinRoom.ownPeer);
 
     // Process remote peers that were in the room while we joined and start decoding their media streams
-    odinRoom.peers.forEach((peer) => {
+    odinRoom.remotePeers.forEach((peer) => {
       console.log(`Processing existing peer ${peer.id}`);
       peer.startMedias();
       addUiPeer(peer);
@@ -59,34 +59,34 @@ async function connect(token: string) {
 
     // Handle peer join events to update our UI
     odinRoom.addEventListener('PeerJoined', (event) => {
-      console.log(`Adding new peer ${event.detail.peer.id}`);
-      addUiPeer(event.detail.peer);
+      console.log(`Adding new peer ${event.payload.peer.id}`);
+      addUiPeer(event.payload.peer);
     });
 
     // Handle peer left events to update our UI
     odinRoom.addEventListener('PeerLeft', (event) => {
-      console.log(`Removing peer ${event.detail.peer.id}`);
-      removeUiPeer(event.detail.peer);
+      console.log(`Removing peer ${event.payload.peer.id}`);
+      removeUiPeer(event.payload.peer);
     });
 
     // Handle media started events to update our UI and start the audio decoder
     odinRoom.addEventListener('MediaStarted', (event) => {
-      console.log(`Adding new media ${event.detail.media.id} owned by peer ${event.detail.peer.id}`);
-      event.detail.media.start();
-      addUiMedia(event.detail.media);
+      console.log(`Adding new media ${event.payload.media.id} owned by peer ${event.payload.peer.id}`);
+      event.payload.media.start();
+      addUiMedia(event.payload.media);
     });
 
     // Handle media stopped events to update our UI and stop the audio decoder
     odinRoom.addEventListener('MediaStopped', (event) => {
-      console.log(`Removing new media ${event.detail.media.id} owned by peer ${event.detail.peer.id}`);
-      event.detail.media.stop();
-      removeUiMedia(event.detail.media);
+      console.log(`Removing new media ${event.payload.media.id} owned by peer ${event.payload.peer.id}`);
+      event.payload.media.stop();
+      removeUiMedia(event.payload.media);
     });
 
     // Handle media stopped events to update our UI and stop the audio decoder
     odinRoom.addEventListener('MediaActivity', (event) => {
-      console.log(`Handle activity update on media ${event.detail.media.id}`, event.detail.isActive);
-      updateUiMediaActivity(event.detail.media);
+      console.log(`Handle activity update on media ${event.payload.media.id}`, event.payload.media.active);
+      updateUiMediaActivity(event.payload.media);
     });
   } catch (e) {
     console.error('Failed to join room', e);
@@ -160,7 +160,10 @@ generateAccessKeyBtn?.addEventListener('click', () => {
  */
 const toggleConnectionBtn = document.querySelector<HTMLButtonElement>('#toggle-connection');
 toggleConnectionBtn?.addEventListener('click', (e: any) => {
-  if (OdinClient.state === OdinConnectionState.disconnected || OdinClient.state === OdinConnectionState.error) {
+  if (
+    OdinClient.connectionState === OdinConnectionState.disconnected ||
+    OdinClient.connectionState === OdinConnectionState.error
+  ) {
     const userId = ''; // For this example, we just sent an empty string as user ID for authentication
     const tokenGenerator = new TokenGenerator(accessKey);
     const token = tokenGenerator.createToken(roomId, userId);
@@ -175,9 +178,9 @@ toggleConnectionBtn?.addEventListener('click', (e: any) => {
  * Handle connection state changes and conditionally enable/disable UI elements.
  */
 OdinClient.addEventListener('ConnectionStateChanged', (event) => {
-  console.log('Client connection status changed', event.detail.state);
+  console.log('Client connection status changed', event.payload.newState);
 
-  if (event.detail.state !== OdinConnectionState.disconnected) {
+  if (event.payload.newState !== OdinConnectionState.disconnected) {
     accessKeyInput?.setAttribute('disabled', 'disabled');
     roomIdInput?.setAttribute('disabled', 'disabled');
     generateAccessKeyBtn?.setAttribute('disabled', 'disabled');
@@ -189,14 +192,14 @@ OdinClient.addEventListener('ConnectionStateChanged', (event) => {
   const title = app.querySelector('#room-title');
   if (title) {
     title.innerHTML =
-      event.detail.state === OdinConnectionState.connected
+      event.payload.newState === OdinConnectionState.connected
         ? `Joined '${OdinClient.rooms[0].id}' on ${OdinClient.rooms[0].serverAddress}`
         : 'Not Connected';
   }
 });
 
 /**
- * Helper function to get HTML container contaning the list of peers and medias.
+ * Helper function to get HTML container containing the list of peers and medias.
  */
 function getUiPeerContainer(): Element {
   let container = app.querySelector('#peer-container');
