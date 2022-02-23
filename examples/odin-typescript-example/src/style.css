@@ -3,7 +3,7 @@
   --app-color-muted: #b4b4b4;
   --app-color-contrast: #f3f3f3;
   --app-color-primary: #004a6d;
-  --app-color-accent: #e40e20;
+  --app-color-accent: #e40e2062;
   --app-color-success: #4caf50;
   --app-color-warning: #ffc107;
   --app-color-error: #f44336;
@@ -52,11 +52,21 @@
 
 fieldset {
   margin-top: var(--app-padding);
-  border: 1px solid var(--app-color-muted);
+  border: 1px solid var(--app-color-accent);
 }
 
 legend {
   color: var(--app-color-primary);
+}
+
+li {
+  font-weight: bold;
+  color: var(--app-color-primary);
+}
+
+li > div {
+  font-size: 0.8em;
+  font-weight: normal;
 }
 
 .talking {

@@ -23,6 +23,16 @@ let accessKey = '';
 let roomId = '';
 
 /**
+ * The identifier to set for your own peer during authentication.
+ */
+let userId = '';
+
+/**
+ * The custom string to set as user data for your own peer (can be changed later).
+ */
+let userData = '';
+
+/**
  * Connects to the ODIN server network by authenticating with the specified room token, joins the room, configures our
  * own microphone input stream and registers a few callbacks to handle the most important server events.
  */
@@ -38,29 +48,40 @@ async function connect(token: string) {
       },
     });
 
-    // Authenticate and join a room using the specified token and audio settings
-    const odinRoom = await OdinClient.joinRoom(token, mediaStream, {
-      voiceActivityDetection: true,
-      masterVolume: 1,
-    });
+    // Authenticate and join a room using the specified token, audio settings and specified user data
+    const odinRoom = await OdinClient.joinRoom(
+      token,
+      mediaStream,
+      {
+        voiceActivityDetection: true,
+        masterVolume: 1,
+      },
+      stringToByteArray(userData)
+    );
 
     // Create a local media for us and start capturing the microphone using the media stream from above
     await odinRoom.createMedia().start();
 
     // Add our own peer to UI
-    addUiPeer(odinRoom.ownPeer);
+    addOrUpdateUiPeer(odinRoom.ownPeer);
 
     // Process remote peers that were in the room while we joined and start decoding their media streams
     odinRoom.remotePeers.forEach((peer) => {
       console.log(`Processing existing peer ${peer.id}`);
       peer.startMedias();
-      addUiPeer(peer);
+      addOrUpdateUiPeer(peer);
     });
 
     // Handle peer join events to update our UI
     odinRoom.addEventListener('PeerJoined', (event) => {
       console.log(`Adding new peer ${event.payload.peer.id}`);
-      addUiPeer(event.payload.peer);
+      addOrUpdateUiPeer(event.payload.peer);
+    });
+
+    // Handle peer user data changes to update our UI
+    odinRoom.addEventListener('PeerUserDataChanged', (event) => {
+      console.log(`Received user data update for peer ${event.payload.peer.id}`);
+      addOrUpdateUiPeer(event.payload.peer);
     });
 
     // Handle peer left events to update our UI
@@ -118,6 +139,10 @@ app.innerHTML = `
     <label for="access-key">Access Key</label>
     <input id="access-key" type="text" value="${accessKey}" placeholder="A local access key for testing">
     <button id="generate-access-key">Generate</button>
+    <label for="user-id">Peer User ID</label>
+    <input id="user-id" type="text" value="${userId}" placeholder="Optional identifier (e.g. nickname)">
+    <label for="user-data">Peer User Data</label>
+    <input id="user-data" type="text" value="${userData}" placeholder="Optional arbitrary data (e.g. JSON)">
     <label for="room-id">Room ID</label>
     <input id="room-id" type="text" value="${roomId}" placeholder="The name of the room to join">
     <button id="toggle-connection">Join</button>
@@ -137,7 +162,34 @@ accessKeyInput?.addEventListener('change', (e: any) => {
 });
 
 /**
- * Grab access key input and register event handlers to handle manual changes.
+ * Grab user ID input and register event handlers to handle manual changes.
+ */
+const userIdInput = app.querySelector<HTMLInputElement>('#user-id');
+userIdInput?.addEventListener('change', (e: any) => {
+  if (!e.target) return;
+  userId = (e.target as HTMLInputElement).value;
+});
+
+/**
+ * Grab user data input and register event handlers to handle manual changes.
+ */
+const userDataInput = app.querySelector<HTMLInputElement>('#user-data');
+userDataInput?.addEventListener('change', (e: any) => {
+  if (!e.target) return;
+  userData = (e.target as HTMLInputElement).value;
+
+  // if we're connected, also send an update of our own user data to the server
+  if (OdinClient.connectionState === OdinConnectionState.connected) {
+    const ownPeer = OdinClient.rooms[0].ownPeer;
+    ownPeer.data = stringToByteArray(userData);
+    ownPeer.update(); // flush user data update
+    console.log('Sent updated peer user data to server', ownPeer.data);
+    addOrUpdateUiPeer(ownPeer);
+  }
+});
+
+/**
+ * Grab room ID input and register event handlers to handle manual changes.
  */
 const roomIdInput = app.querySelector<HTMLInputElement>('#room-id');
 roomIdInput?.addEventListener('change', (e: any) => {
@@ -164,7 +216,6 @@ toggleConnectionBtn?.addEventListener('click', (e: any) => {
     OdinClient.connectionState === OdinConnectionState.disconnected ||
     OdinClient.connectionState === OdinConnectionState.error
   ) {
-    const userId = ''; // For this example, we just sent an empty string as user ID for authentication
     const tokenGenerator = new TokenGenerator(accessKey);
     const token = tokenGenerator.createToken(roomId, userId);
     console.log('Generated a new signed JWT to join room', token);
@@ -182,6 +233,7 @@ OdinClient.addEventListener('ConnectionStateChanged', (event) => {
 
   if (event.payload.newState !== OdinConnectionState.disconnected) {
     accessKeyInput?.setAttribute('disabled', 'disabled');
+    userIdInput?.setAttribute('disabled', 'disabled');
     roomIdInput?.setAttribute('disabled', 'disabled');
     generateAccessKeyBtn?.setAttribute('disabled', 'disabled');
     if (toggleConnectionBtn) toggleConnectionBtn.innerHTML = 'Leave';
@@ -214,11 +266,13 @@ function getUiPeerContainer(): Element {
 /**
  * Helper function to add a peer node to the UI.
  */
-function addUiPeer(peer: OdinPeer) {
+function addOrUpdateUiPeer(peer: OdinPeer) {
   const container = getUiPeerContainer();
-  const peerItem = document.createElement('li');
+  const peerItem = app.querySelector(`#peer-${peer.id}`) ?? document.createElement('li');
+  const peerUserData = byteArrayToString(peer.data);
+
   peerItem.setAttribute('id', `peer-${peer.id}`);
-  peerItem.innerHTML = `Peer(${peer.id})`;
+  peerItem.innerHTML = `Peer(${peer.id}) <div> User ID: ${peer.userId} <br> User Data: ${peerUserData} <div>`;
   container.append(peerItem);
 
   const mediaList = document.createElement('ul');
@@ -271,7 +325,24 @@ function updateUiMediaActivity(media: OdinMedia) {
 function resetUi() {
   accessKeyInput?.removeAttribute('disabled');
   roomIdInput?.removeAttribute('disabled');
+  userIdInput?.removeAttribute('disabled');
   generateAccessKeyBtn?.removeAttribute('disabled');
   if (toggleConnectionBtn) toggleConnectionBtn.innerHTML = 'Join';
   app.querySelector('#peer-container')?.remove();
+}
+
+/**
+ * Helper function to convert user data from string to byte-array.
+ */
+function stringToByteArray(str: string): Uint8Array {
+  const utf8Encode = new TextEncoder();
+  return utf8Encode.encode(str);
+}
+
+/**
+ * Helper function to convert user data from byte-array to string.
+ */
+function byteArrayToString(bytes: Uint8Array) {
+  const utf8Decode = new TextDecoder();
+  return utf8Decode.decode(bytes);
 }
