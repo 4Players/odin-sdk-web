@@ -133,6 +133,8 @@ export class OdinMedia {
       });
     }
 
+    this._active = false;
+
     this._audioService.unregisterMedia(this);
   }
 
