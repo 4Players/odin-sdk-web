@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+
+- Fixed a bug where `active` state of a media was not set to `false` on stop.
+
 ## 0.6.1
 
 - Changed npm `bundle` script to use rollup and terser instead of browserify.
