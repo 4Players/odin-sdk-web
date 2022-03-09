@@ -304,7 +304,7 @@ export class OdinRoom {
    *
    * @private
    */
-  private roomUpdated(roomUpdate: RoomUpdate): void {
+  private async roomUpdated(roomUpdate: RoomUpdate): Promise<void> {
     switch (roomUpdate.kind) {
       case 'Joined': {
         const payload = parseJwt(this._token);
@@ -341,7 +341,7 @@ export class OdinRoom {
         break;
       }
       case 'PeerLeft': {
-        const peer = this.removePeer(roomUpdate.peer_id);
+        const peer = await this.removePeer(roomUpdate.peer_id);
         if (peer) {
           this.eventTarget.dispatchEvent(
             new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerLeft', { room: this, peer })
@@ -440,7 +440,7 @@ export class OdinRoom {
    *
    * @param peerId The id of the peer to remove
    */
-  private removePeer(peerId: number): OdinPeer | undefined {
+  private async removePeer(peerId: number): Promise<OdinPeer | undefined> {
     if (peerId === this._ownPeer.id) {
       return;
     }
@@ -448,9 +448,12 @@ export class OdinRoom {
     if (!peer) {
       return;
     }
-    peer.medias.forEach((media) => {
-      peer.medias.delete(media.id);
-    });
+
+    for (const media of peer.medias.entries()) {
+      await media[1].stop();
+      peer.medias.delete(media[1].id);
+    }
+
     this._remotePeers.delete(peerId);
     return peer;
   }
