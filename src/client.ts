@@ -227,15 +227,6 @@ export class OdinClient {
   }
 
   /**
-   * Returns a random int value.
-   *
-   * @private
-   */
-  private static randomIntFromInterval(min: number, max: number) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
-  }
-
-  /**
    * Disconnect from all rooms and stops all audio handling.
    */
   static disconnect(): void {
