@@ -159,9 +159,10 @@ export class OdinClient {
       userData = new Uint8Array();
     }
     if (!position) {
-      const a = this.randomIntFromInterval(0, 2 * Math.PI);
-      const x = Math.cos(a) * 0.5;
-      const y = Math.sin(a) * 0.5;
+      const a = Math.random() * 2 * Math.PI;
+      const r = 0.5 * Math.sqrt(Math.random());
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
       position = [x, y];
     }
 
