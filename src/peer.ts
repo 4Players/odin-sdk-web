@@ -140,17 +140,17 @@ export class OdinPeer {
    *
    * @param mediaIds Optional list of media IDs to start
    */
-  startMedias(mediaIds?: number[]): void {
+  async startMedias(mediaIds?: number[]): Promise<void> {
     if (mediaIds && mediaIds.length > 0) {
-      this._activeMedias.forEach(async (media) => {
-        if (media.id in mediaIds) {
-          await media.start();
+      for (const media of this._activeMedias) {
+        if (media[0] in mediaIds) {
+          await media[1].start();
         }
-      });
+      }
     } else {
-      this._activeMedias.forEach(async (media) => {
-        await media.start();
-      });
+      for (const media of this._activeMedias) {
+        await media[1].start();
+      }
     }
   }
 
@@ -159,17 +159,17 @@ export class OdinPeer {
    *
    * @param mediaIds Optional list of media IDs to stop
    */
-  stopMedias(mediaIds?: number[]): void {
+  async stopMedias(mediaIds?: number[]): Promise<void> {
     if (mediaIds && mediaIds.length > 0) {
-      this._activeMedias.forEach(async (media) => {
-        if (media.id in mediaIds) {
-          await media.stop();
+      for (const media of this._activeMedias) {
+        if (media[0] in mediaIds) {
+          await media[1].stop();
         }
-      });
+      }
     } else {
-      this._activeMedias.forEach(async (media) => {
-        await media.stop();
-      });
+      for (const media of this._activeMedias) {
+        await media[1].stop();
+      }
     }
   }
 
