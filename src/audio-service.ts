@@ -25,28 +25,10 @@ export class AudioService {
   private _room!: OdinRoom;
   private _bowser!: Bowser.Parser.Parser;
   private _audioSettings: IOdinAudioSettings = {
-    masterVolume: 1,
     voiceActivityDetection: true,
   };
 
-  private constructor(
-    private _ms: MediaStream,
-    private _worker: Worker,
-    private _audioDataChannel: RTCDataChannel,
-    audioSettings?: IOdinAudioSettings
-  ) {
-    if (typeof audioSettings?.masterVolume !== 'undefined') {
-      this._audioSettings.masterVolume = parseFloat(String(audioSettings.masterVolume));
-    }
-
-    if (typeof audioSettings?.masterVolume !== 'undefined') {
-      this._audioSettings.voiceActivityDetection = !!audioSettings.voiceActivityDetection;
-    }
-
-    if (!this._audioSettings.voiceActivityDetection) {
-      this.disableVAD();
-    }
-
+  private constructor(private _worker: Worker, private _audioDataChannel: RTCDataChannel) {
     this._bowser = Bowser.getParser(window.navigator.userAgent);
 
     this._worker.onmessage = (event) => {
@@ -90,13 +72,8 @@ export class AudioService {
    * @param audioChannel  The RTC data channel used to transfer audio data
    * @param audioSettings Optional audio settings to apply
    */
-  static setInstance(
-    ms: MediaStream,
-    worker: Worker,
-    audioChannel: RTCDataChannel,
-    audioSettings?: IOdinAudioSettings
-  ): AudioService {
-    this._instance = new AudioService(ms, worker, audioChannel, audioSettings);
+  static setInstance(worker: Worker, audioChannel: RTCDataChannel): AudioService {
+    this._instance = new AudioService(worker, audioChannel);
     return this._instance;
   }
 
@@ -206,11 +183,42 @@ export class AudioService {
       numberOfOutputs: 0,
     });
 
-    const browser = Bowser.getParser(window.navigator.userAgent);
-    const audioTrack = this._ms.getAudioTracks()[0];
+    const encoderPipe = new MessageChannel();
+    const decoderPipe = new MessageChannel();
 
+    this._worker.postMessage(
+      {
+        type: 'initialize',
+        encoder: { worklet: encoderPipe.port1 },
+        decoder: { worklet: decoderPipe.port1 },
+        stats_interval: 1000,
+      },
+      [encoderPipe.port1, decoderPipe.port1]
+    );
+
+    this._encoderNode.port.postMessage({ type: 'initialize', worker: encoderPipe.port2 }, [encoderPipe.port2]);
+    this._decoderNode.port.postMessage({ type: 'initialize', worker: decoderPipe.port2 }, [decoderPipe.port2]);
+  }
+
+  /**
+   * Starts to record the audio input and in the case of having a Blink based browser, also takes care about
+   * echo cancellation.
+   *
+   * @param ms
+   * @param audioSettings
+   */
+  async startRecording(ms: MediaStream, audioSettings?: IOdinAudioSettings): Promise<void> {
+    if (typeof audioSettings?.voiceActivityDetection !== 'undefined') {
+      this._audioSettings.voiceActivityDetection = !!audioSettings.voiceActivityDetection;
+    }
+
+    if (!this._audioSettings.voiceActivityDetection) {
+      this.disableVAD();
+    }
+
+    const audioTrack = ms.getAudioTracks()[0];
     // Apply ugly workaround to apply echo cancellation in Chromium based browsers
-    if (browser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
+    if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
       const outputDestination = this._audioContext.createMediaStreamDestination();
       this._decoderNode.connect(outputDestination);
 
@@ -228,57 +236,13 @@ export class AudioService {
       this._audioElement = new Audio();
       this._audioElement.srcObject = outputStream;
       this._audioElement.volume = 1;
-
+      console.log(' this._audioElement.play();');
       await this._audioElement.play();
     } else {
       this._decoderNode.connect(this._audioContext.destination);
-      this._audioSource = this._audioContext.createMediaStreamSource(this._ms);
+      this._audioSource = this._audioContext.createMediaStreamSource(ms);
       this._audioSource.connect(this._encoderNode);
     }
-
-    const encoderPipe = new MessageChannel();
-    const decoderPipe = new MessageChannel();
-
-    this._worker.postMessage(
-      {
-        type: 'initialize',
-        encoder: { worklet: encoderPipe.port1 },
-        decoder: { worklet: decoderPipe.port1 },
-        stats_interval: 1000,
-      },
-      [encoderPipe.port1, decoderPipe.port1]
-    );
-
-    this._worker.postMessage({
-      type: 'set_volume',
-      media_id: 0,
-      value: this._audioSettings.masterVolume,
-    });
-
-    this._encoderNode.port.postMessage({ type: 'initialize', worker: encoderPipe.port2 }, [encoderPipe.port2]);
-    this._decoderNode.port.postMessage({ type: 'initialize', worker: decoderPipe.port2 }, [decoderPipe.port2]);
-  }
-
-  /**
-   * Enable RNN based voice activity detection.
-   */
-  enablesVAD() {
-    this._worker.postMessage({
-      type: 'update_vad_thresholds',
-      voice: { going_active: 0.9, going_inactive: 0.8 },
-      rms_dbfs: { going_active: -30, going_inactive: -40 },
-    });
-  }
-
-  /**
-   * Disable RNN based voice activity detection.
-   */
-  disableVAD() {
-    this._worker.postMessage({
-      type: 'update_vad_thresholds',
-      voice: { going_active: 0, going_inactive: 0 },
-      rms_dbfs: { going_active: 0, going_inactive: 0 },
-    });
   }
 
   /**
@@ -291,7 +255,6 @@ export class AudioService {
       throw new Error('Failed to change media stream; audio service is not initialized');
     }
 
-    this._ms = ms;
     const audioTrack = ms.getAudioTracks()[0];
     if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
       const outputDestination = this._audioContext.createMediaStreamDestination();
@@ -320,6 +283,28 @@ export class AudioService {
       this._audioSource = this._audioContext.createMediaStreamSource(ms);
       this._audioSource?.connect(this._encoderNode);
     }
+  }
+
+  /**
+   * Enables RNN based voice activity detection.
+   */
+  enablesVAD() {
+    this._worker.postMessage({
+      type: 'update_vad_thresholds',
+      voice: { going_active: 0.9, going_inactive: 0.8 },
+      rms_dbfs: { going_active: -30, going_inactive: -40 },
+    });
+  }
+
+  /**
+   * Disables RNN based voice activity detection.
+   */
+  disableVAD() {
+    this._worker.postMessage({
+      type: 'update_vad_thresholds',
+      voice: { going_active: 0, going_inactive: 0 },
+      rms_dbfs: { going_active: 0, going_inactive: 0 },
+    });
   }
 
   /**

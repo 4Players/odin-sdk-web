@@ -7,10 +7,6 @@ import { OdinMedia } from './media';
  */
 export interface IOdinAudioSettings {
   /**
-   * The global playback volume for all medias the room (should be between 0 and 2).
-   */
-  masterVolume?: number;
-  /**
    * Enable or disable RNN-based voice activity detection.
    */
   voiceActivityDetection?: boolean;
@@ -23,7 +19,7 @@ export interface IOdinClientSettings {
   /**
    * The URL of the ODIN gateway to use.
    */
-  gatewayUrl?: string;
+  gatewayUrl: string;
 }
 
 /**
