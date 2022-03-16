@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0
+
+- Added `OdinClient.initRoom` and `OdinClient.initRooms`, which will authenticate using a specified room token and return `OdinRoom` instance(s). This allows registring event handlers before joining for more convenient room handling.
+- Made `OdinRoom.join` a public function and added optional `userData` and `position` arguments to set initial values.
+- Removed `OdinClient.joinRoom` in favor of the new init and join functions.
+- Fixed a bug where the decoder of an `OdinMedia` wasn't stopped when the audio stream was removed from the room.
+- Changed the behavior of `OdinRoom.addEventListener` for the following event types:
+	- `OdinPeerJoinedLeftEvent` will now be emitted for all peers that join/leave the room, including those already in the room during join as well as your own peer.
+	- `OdinMediaStartedStoppedEvent` will now be emitted for all medias that are added or removed, including those already in the room during join as well as your own medias.
+- Updated example to reflect the latest API changes.
+
+## 0.6.4
+
+- Changed the behavior of remote medias to automatically stop them when the peer disconnects.
+
+## 0.6.3
+
+- Improved the calculation for the default room position.
+
 ## 0.6.2
 
 - Fixed a bug where `active` state of a media was not set to `false` on stop.
