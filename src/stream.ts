@@ -18,7 +18,7 @@ export class Stream {
   private _requests: Map<number, RequestResolve> = new Map();
   private nextId = 0;
 
-  constructor(private _url: string, private _handler: StreamHandler, private _timeout = 15000) {
+  constructor(private _url: string, private _handler: StreamHandler, private _timeout = 5000) {
     this._websocket = new WebSocket(_url);
     this._websocket.binaryType = 'arraybuffer';
     this._websocket.addEventListener('close', () => {
@@ -26,7 +26,6 @@ export class Stream {
       this._requests.forEach(({ reject }) => reject(new Error('closed')));
       this._requests.clear();
     });
-
     this._websocket.addEventListener('message', (e) => {
       receive(this, e.data);
     });
