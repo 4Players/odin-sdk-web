@@ -195,7 +195,7 @@ export class OdinPeer {
   }
 
   /**
-   * Register to peer events from `IOdinPeerEvents`.
+   * Registers to peer events from `IOdinPeerEvents`.
    *
    * @param eventName The name of the event to listen to
    * @param handler   The callback to handle the event

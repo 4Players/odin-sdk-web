@@ -16,6 +16,8 @@ export class OdinMedia {
    * @param _id     The ID of the new media
    * @param _peerId The ID of the peer that owns the new media
    * @param _remote Wether or not the new media belongs to a remote peer
+   *
+   * @ignore
    */
   constructor(private _id: number, private _peerId: number, private _remote: boolean) {
     const audioService = AudioService.getInstance();
@@ -134,7 +136,6 @@ export class OdinMedia {
     }
 
     this._active = false;
-
     this._audioService.unregisterMedia(this);
   }
 
@@ -152,7 +153,7 @@ export class OdinMedia {
   }
 
   /**
-   * Register to media events from `IOdinMediaEvents`.
+   * Registers to media events from `IOdinMediaEvents`.
    *
    * @param eventName The name of the event to listen to
    * @param handler   The callback to handle the event
