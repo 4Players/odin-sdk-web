@@ -1,5 +1,5 @@
 import { generateAccessKey, TokenGenerator } from '@4players/odin-tokens';
-import { OdinClient, OdinConnectionState, OdinMedia, OdinPeer } from '@4players/odin';
+import { OdinClient, OdinConnectionState, OdinMedia, OdinPeer, OdinRoom } from '@4players/odin';
 
 import './style.css';
 
@@ -9,7 +9,7 @@ import './style.css';
  * ===== IMPORTANT =====
  * Your access key is the unique authentication key to be used to generate room tokens for accessing the ODIN
  * server network. Think of it as your individual username and password combination all wrapped up into a single
- * non-comprehendable string of characters, and treat it with the same respect. For your own security, we strongly
+ * non-comprehendible string of characters, and treat it with the same respect. For your own security, we strongly
  * recommend that you NEVER put an access key in your client-side code.
  *
  * Please refer to our developer documentation to learn more about access keys:
@@ -38,82 +38,78 @@ let userData = '';
  */
 async function connect(token: string) {
   try {
-    // Create a new media stream for the default capture device
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        autoGainControl: true,
-        noiseSuppression: true,
-        sampleRate: 48000,
-      },
-    });
+    // Authenticate and initialize the room
+    const odinRoom = await OdinClient.initRoom(token);
 
-    // Authenticate and join a room using the specified token, audio settings and specified user data
-    const odinRoom = await OdinClient.joinRoom(
-      token,
-      mediaStream,
-      {
-        voiceActivityDetection: true,
-        masterVolume: 1,
-      },
-      stringToByteArray(userData)
-    );
+    // Register room events
+    handleRoomEvents(odinRoom);
 
-    // Create a local media for us and start capturing the microphone using the media stream from above
-    await odinRoom.createMedia().start();
+    // Join the room and specify initial user data
+    await odinRoom.join(stringToByteArray(userData));
 
-    // Add our own peer to UI
-    addOrUpdateUiPeer(odinRoom.ownPeer);
-
-    // Process remote peers that were in the room while we joined and start decoding their media streams
-    odinRoom.remotePeers.forEach((peer) => {
-      console.log(`Processing existing peer ${peer.id}`);
-      peer.startMedias();
-      addOrUpdateUiPeer(peer);
-    });
-
-    // Handle peer join events to update our UI
-    odinRoom.addEventListener('PeerJoined', (event) => {
-      console.log(`Adding new peer ${event.payload.peer.id}`);
-      addOrUpdateUiPeer(event.payload.peer);
-    });
-
-    // Handle peer user data changes to update our UI
-    odinRoom.addEventListener('PeerUserDataChanged', (event) => {
-      console.log(`Received user data update for peer ${event.payload.peer.id}`);
-      addOrUpdateUiPeer(event.payload.peer);
-    });
-
-    // Handle peer left events to update our UI
-    odinRoom.addEventListener('PeerLeft', (event) => {
-      console.log(`Removing peer ${event.payload.peer.id}`);
-      removeUiPeer(event.payload.peer);
-    });
-
-    // Handle media started events to update our UI and start the audio decoder
-    odinRoom.addEventListener('MediaStarted', (event) => {
-      console.log(`Adding new media ${event.payload.media.id} owned by peer ${event.payload.peer.id}`);
-      event.payload.media.start();
-      addUiMedia(event.payload.media);
-    });
-
-    // Handle media stopped events to update our UI and stop the audio decoder
-    odinRoom.addEventListener('MediaStopped', (event) => {
-      console.log(`Removing new media ${event.payload.media.id} owned by peer ${event.payload.peer.id}`);
-      event.payload.media.stop();
-      removeUiMedia(event.payload.media);
-    });
-
-    // Handle media stopped events to update our UI and stop the audio decoder
-    odinRoom.addEventListener('MediaActivity', (event) => {
-      console.log(`Handle activity update on media ${event.payload.media.id}`, event.payload.media.active);
-      updateUiMediaActivity(event.payload.media);
-    });
+    // Create a new audio stream for the default capture device and append it to the room
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: {
+          echoCancellation: true,
+          autoGainControl: true,
+          noiseSuppression: true,
+          sampleRate: 48000,
+        },
+      })
+      .then((mediaStream) => {
+        odinRoom.createMedia(mediaStream);
+      });
   } catch (e) {
     console.error('Failed to join room', e);
     disconnect();
     resetUi();
   }
+}
+
+/**
+ * Helper function to set event handlers for ODIN room events.
+ */
+function handleRoomEvents(room: OdinRoom) {
+  // Handle peer join events to update our UI
+  room.addEventListener('PeerJoined', (event) => {
+    console.log(`Adding peer ${event.payload.peer.id}`);
+    console.log(event.payload.peer);
+    addOrUpdateUiPeer(event.payload.peer);
+  });
+
+  // Handle peer left events to update our UI
+  room.addEventListener('PeerLeft', (event) => {
+    console.log(`Removing peer ${event.payload.peer.id}`);
+    removeUiPeer(event.payload.peer);
+  });
+
+  // Handle media started events to update our UI and start the audio decoder
+  room.addEventListener('MediaStarted', (event) => {
+    console.log(`Adding new media ${event.payload.media.id} owned by peer ${event.payload.peer.id}`);
+    event.payload.media.start();
+    addOrUpdateUiPeer(event.payload.peer);
+  });
+
+  // Handle media stopped events to update our UI and stop the audio decoder
+  room.addEventListener('MediaStopped', (event) => {
+    console.log(`Removing new media ${event.payload.media.id} owned by peer ${event.payload.peer.id}`);
+    event.payload.media.stop();
+    addOrUpdateUiPeer(event.payload.peer);
+  });
+
+  // Handle peer user data changes to update our UI
+  room.addEventListener('PeerUserDataChanged', (event) => {
+    console.log(`Received user data update for peer ${event.payload.peer.id}`);
+    console.log(event.payload.peer);
+    addOrUpdateUiPeer(event.payload.peer);
+  });
+
+  // Handle media stopped events to update our UI and stop the audio decoder
+  room.addEventListener('MediaActivity', (event) => {
+    console.log(`Handle activity update on media ${event.payload.media.id}`, event.payload.media.active);
+    updateUiMediaActivity(event.payload.media);
+  });
 }
 
 /**
@@ -251,23 +247,16 @@ OdinClient.addEventListener('ConnectionStateChanged', (event) => {
 });
 
 /**
- * Helper function to get HTML container containing the list of peers and medias.
+ * Helper function to add a peer node to the UI.
  */
-function getUiPeerContainer(): Element {
+function addOrUpdateUiPeer(peer: OdinPeer) {
   let container = app.querySelector('#peer-container');
   if (!container) {
     container = document.createElement('ul');
     container.setAttribute('id', 'peer-container');
     app.querySelector('#room-container')?.append(container);
   }
-  return container;
-}
 
-/**
- * Helper function to add a peer node to the UI.
- */
-function addOrUpdateUiPeer(peer: OdinPeer) {
-  const container = getUiPeerContainer();
   const peerItem = app.querySelector(`#peer-${peer.id}`) ?? document.createElement('li');
   const peerUserData = byteArrayToString(peer.data);
 
@@ -278,8 +267,12 @@ function addOrUpdateUiPeer(peer: OdinPeer) {
   const mediaList = document.createElement('ul');
   mediaList.setAttribute('id', `peer-${peer.id}-medias`);
   peerItem.append(mediaList);
+
   peer.medias.forEach((media) => {
-    addUiMedia(media);
+    const mediaItem = document.createElement('li');
+    mediaItem.setAttribute('id', `media-${media.id}`);
+    mediaItem.innerHTML = `Media(${media.id})`;
+    mediaList.append(mediaItem);
   });
 }
 
@@ -288,24 +281,6 @@ function addOrUpdateUiPeer(peer: OdinPeer) {
  */
 function removeUiPeer(peer: OdinPeer) {
   app.querySelector(`#peer-${peer.id}`)?.remove();
-}
-
-/**
- * Helper function to add a media node to the UI.
- */
-function addUiMedia(media: OdinMedia) {
-  const container = app.querySelector(`#peer-${media.peerId}-medias`);
-  const mediaItem = document.createElement('li');
-  mediaItem.setAttribute('id', `media-${media.id}`);
-  mediaItem.innerHTML = `Media(${media.id})`;
-  container?.append(mediaItem);
-}
-
-/**
- * Helper function to remove a media node to the UI.
- */
-function removeUiMedia(media: OdinMedia) {
-  app.querySelector(`#media-${media.id}`)?.remove();
 }
 
 /**
