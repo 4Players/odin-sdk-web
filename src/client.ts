@@ -1,6 +1,5 @@
 import {
   IAuthResult,
-  IOdinAudioSettings,
   IOdinClientSettings,
   IOdinClientEvents,
   OdinConnectionState,
@@ -44,14 +43,14 @@ export class OdinClient {
    * An array of available `OdinRoom` instances.
    */
   static get rooms(): OdinRoom[] {
-    return OdinClient._rooms;
+    return this._rooms;
   }
 
   /**
    * The current state of the main stream connection.
    */
   static get connectionState(): OdinConnectionState {
-    return OdinClient._state;
+    return this._state;
   }
 
   /**
@@ -77,27 +76,26 @@ export class OdinClient {
   }
 
   /**
-   * Authenticates against the Odin gateway and establishes the main stream connection.
+   * Authenticates against the configured ODIN gateway and establishes the main stream connection.
    *
    * @private
    */
-  private static async connect(
-    token: string,
-    ms: MediaStream,
-    audioSettings?: IOdinAudioSettings
-  ): Promise<OdinRoom[]> {
+  private static async connect(token: string, gateway?: string): Promise<OdinRoom[]> {
     if (this.connectionState === OdinConnectionState.connected) {
       return this._rooms;
     }
 
+    if (!this.config.gatewayUrl && !gateway) {
+      throw new Error('No gateway URL configured');
+    }
+
     this._worker = new Worker(workerScript);
-    this._rtcHandler = new RtcHandler(OdinClient._worker);
-    this._audioService = AudioService.setInstance(ms, this._worker, this._rtcHandler.audioChannel, audioSettings);
-    OdinClient.connectionState = OdinConnectionState.connecting;
+    this._rtcHandler = new RtcHandler(this._worker);
+    this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel);
+    this.connectionState = OdinConnectionState.connecting;
 
     try {
-      const gatewayAuthResult = await this.authGateway(token);
-
+      const gatewayAuthResult = await this.authGateway(token, gateway ?? this.config.gatewayUrl);
       this._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, this.mainHandler);
 
       this._mainStream.onclose = () => {
@@ -113,100 +111,66 @@ export class OdinClient {
       const mainStreamAuthResult = await this._mainStream.request('Authenticate', {
         token: gatewayAuthResult.token,
       });
+
       const roomIds: string[] = mainStreamAuthResult.room_ids;
 
       await this._rtcHandler.startRtc(this._mainStream);
       await this._audioService.setupAudio();
 
       this._rooms = roomIds.map((roomId) => {
-        return new OdinRoom(roomId, token, gatewayAuthResult.address, this._worker);
+        return new OdinRoom(roomId, token, gatewayAuthResult.address, this._mainStream);
       });
 
       this.connectionState = OdinConnectionState.connected;
-
       return this._rooms;
     } catch (e) {
-      console.error('Failed to establish main stream connection', e);
       this.connectionState = OdinConnectionState.error;
+      throw new Error('Failed to establish main stream connection');
     }
-
-    return [];
   }
 
   /**
-   * Authenticates against the configured ODIN gateway and joins a room using a specified token.
+   * Authenticates against the ODIN server and returns `OdinRoom` instances for all rooms set in the specified token.
    *
-   * @param token         The room token for authentication
-   * @param ms            The capture stream of the input device
-   * @param audioSettings Optional audio settings like VAD or master volume used to initialize audio
-   * @param userData      Optional user data to set for the peer when connecting
-   * @param position      Optional coordinates to set the two-dimensional position of the peer in the room when connecting
-   * @returns             A promise which yields when the room was joined
+   * @param token The room token for authentication
+   * @param gateway The gateway to authenticate against
+   * @returns A promise of the available rooms
    */
-  static async joinRoom(
-    token: string,
-    ms: MediaStream,
-    audioSettings?: IOdinAudioSettings,
-    userData?: Uint8Array,
-    position?: [number, number]
-  ): Promise<OdinRoom> {
-    if (OdinClient.rooms.length > 0) {
-      throw new Error('Failed to join room; close other open connections first');
-    }
-    const rooms = await this.connect(token, ms, audioSettings);
+  static async initRooms(token: string, gateway?: string): Promise<OdinRoom[]> {
+    return await this.connect(token, gateway);
+  }
 
-    if (!userData) {
-      userData = new Uint8Array();
-    }
-    if (!position) {
-      const a = Math.random() * 2 * Math.PI;
-      const r = 0.5 * Math.sqrt(Math.random());
-      const x = Math.cos(a) * r;
-      const y = Math.sin(a) * r;
-      position = [x, y];
-    }
+  /**
+   * Authenticates against the ODIN server and returns an `OdinRoom` instance for the first room set in the specified token.
+   *
+   * @param token The room token for authentication
+   * @param gateway The gateway to authenticate against
+   * @returns A promise of the first available room
+   */
+  static async initRoom(token: string, gateway?: string): Promise<OdinRoom> {
+    const rooms = await this.initRooms(token, gateway);
 
-    if (rooms.length > 0) {
-      const { stream_id } = await this._mainStream.request('JoinRoom', {
-        room_id: rooms[0].id,
-        user_data: userData,
-        position: position,
-      });
-
-      await rooms[0].join(stream_id, userData);
-
-      rooms[0].addEventListener('ConnectionStateChanged', (event) => {
-        if (
-          event.payload.newState === OdinConnectionState.disconnected ||
-          event.payload.newState === OdinConnectionState.error
-        ) {
-          this.connectionState = event.payload.newState;
-          this.disconnect();
-        }
-      });
+    if (rooms.length) {
       return rooms[0];
     } else {
-      throw new Error('Failed to join room; specified token did not contain a valid room ID');
+      throw new Error('Could not create a room');
     }
   }
 
   /**
-   * Not implemented
+   * Not implemented.
    *
    * @private
    */
   private static mainHandler(method: string, params: any[]): void {}
 
   /**
-   * Authenticate against the gateway and returns its result
+   * Authenticates against the gateway and returns its result.
    *
    * @private
    */
-  private static async authGateway(token: string): Promise<IAuthResult> {
-    if (!this.config.gatewayUrl) {
-      throw new Error('No gateway URL configured');
-    }
-    const response = await fetch(this.config.gatewayUrl, {
+  private static async authGateway(token: string, gateway: string): Promise<IAuthResult> {
+    const response = await fetch(gateway, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -228,7 +192,7 @@ export class OdinClient {
   }
 
   /**
-   * Disconnect from all rooms and stops all audio handling.
+   * Disconnects from all rooms and stops all audio handling.
    */
   static disconnect(): void {
     this._rooms.forEach((room) => {
@@ -239,20 +203,20 @@ export class OdinClient {
       this._audioService.stopAllAudio();
     }
     if (this._mainStream) {
-      OdinClient._mainStream.close();
+      this._mainStream.close();
     }
     if (this._worker) {
-      OdinClient._worker.terminate();
+      this._worker.terminate();
     }
     if (this._rtcHandler) {
-      OdinClient._rtcHandler.stopRtc();
+      this._rtcHandler.stopRtc();
     }
 
     this._rooms = [];
   }
 
   /**
-   * Register to client events from `IOdinClientEvents`.
+   * Registers to client events from `IOdinClientEvents`.
    *
    * @param eventName The name of the event to listen to
    * @param handler   The callback to handle the event
