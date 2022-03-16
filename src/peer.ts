@@ -111,6 +111,7 @@ export class OdinPeer {
    * @param media The media instance to remove
    */
   removeMedia(media: OdinMedia): void {
+    media.stop();
     this._audioService.unregisterMedia(media);
     this._activeMedias.delete(media.id);
   }
