@@ -1,8 +1,18 @@
 # Changelog
 
+## 0.7.2
+
+- Removed debug logs.
+- Updated dependencies to fix a security vulnerability in minimist.
+
+## 0.7.1
+
+- Fixed a bug where audio playback nodes were not connected unless capture nodes were connected.
+- Improved internal schema validation.
+
 ## 0.7.0
 
-- Added `OdinClient.initRoom` and `OdinClient.initRooms`, which will authenticate using a specified room token and return `OdinRoom` instance(s). This allows registring event handlers before joining for more convenient room handling.
+- Added `OdinClient.initRoom` and `OdinClient.initRooms`, which will authenticate using a specified room token and return `OdinRoom` instance(s). This allows registering event handlers before joining for more convenient room handling.
 - Made `OdinRoom.join` a public function and added optional `userData` and `position` arguments to set initial values.
 - Removed `OdinClient.joinRoom` in favor of the new init and join functions.
 - Fixed a bug where the decoder of an `OdinMedia` wasn't stopped when the audio stream was removed from the room.
