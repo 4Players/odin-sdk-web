@@ -1,8 +1,6 @@
 import {
   OdinConnectionState,
-  OdinEventMethods,
   OdinEvent,
-  RoomUpdate,
   IOdinRoomEvents,
   IOdinConnectionStateChangedEventPayload,
   IMessageData,
@@ -17,8 +15,9 @@ import {
 import { AudioService } from './audio-service';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
-import { Stream } from './stream';
+import { makeHandler, Stream } from './stream';
 import { openStream, parseJwt } from './utils';
+import { EventSchemaByMethod, EVENT_SCHEMAS, PeerUpdatedSchemaType } from './schema-validation/types';
 
 /**
  * Class describing an `OdinRoom`.
@@ -336,30 +335,33 @@ export class OdinRoom {
    *
    * @private
    */
-  private streamHandler(method: OdinEventMethods, params: any) {
-    switch (method) {
-      case 'RoomUpdated': {
-        for (const update of params.updates) {
-          this.roomUpdated(update);
-        }
-        break;
-      }
-      case 'PeerUpdated': {
-        this.peerUpdated(params);
-        break;
-      }
-      case 'MessageReceived': {
-        const peer = this._remotePeers.get(params.sender_peer_id);
-        const payload = {
-          room: this,
-          senderId: params.sender_peer_id,
-          message: params.message,
-        };
-        peer?.eventTarget.dispatchEvent(new OdinEvent<IOdinMessageReceivedEventPayload>('MessageReceived', payload));
-        this.eventTarget.dispatchEvent(new OdinEvent<IOdinMessageReceivedEventPayload>('MessageReceived', payload));
-        break;
-      }
-    }
+  private streamHandler(method: string, params: unknown) {
+    const handler = makeHandler(
+      EVENT_SCHEMAS,
+      {
+        async RoomUpdated(params, room) {
+          for (const update of params.updates) {
+            await room.roomUpdated(update);
+          }
+        },
+        async PeerUpdated(params, room) {
+          room.peerUpdated(params);
+        },
+        async MessageReceived(params, room) {
+          const peer = room._remotePeers.get(params.sender_peer_id);
+          const payload = {
+            room,
+            senderId: params.sender_peer_id,
+            message: params.message,
+          };
+          peer?.eventTarget.dispatchEvent(new OdinEvent<IOdinMessageReceivedEventPayload>('MessageReceived', payload));
+          room.eventTarget.dispatchEvent(new OdinEvent<IOdinMessageReceivedEventPayload>('MessageReceived', payload));
+        },
+      },
+      this
+    );
+
+    handler(method, params);
   }
 
   /**
@@ -367,9 +369,12 @@ export class OdinRoom {
    *
    * @private
    */
-  private async roomUpdated(roomUpdate: RoomUpdate): Promise<void> {
+  private async roomUpdated(roomUpdate: EventSchemaByMethod<'RoomUpdated'>['updates'][number]): Promise<void> {
     switch (roomUpdate.kind) {
       case 'Joined': {
+        if (!roomUpdate.room || !roomUpdate.own_peer_id || !roomUpdate.media_ids) {
+          throw Error(`The room update of kind ${roomUpdate.kind} is missing fields.`);
+        }
         this._data = roomUpdate.room.user_data;
         this._customer = roomUpdate.room.customer;
         this._ownPeer = new OdinPeer(roomUpdate.own_peer_id, parseJwt(this._token).uid ?? '');
@@ -392,6 +397,9 @@ export class OdinRoom {
         break;
       }
       case 'UserDataChanged': {
+        if (!roomUpdate.user_data) {
+          throw Error(`The room update of kind ${roomUpdate.kind} is missing fields.`);
+        }
         this._data = roomUpdate.user_data;
         this.eventTarget.dispatchEvent(
           new OdinEvent<IOdinRoomDataChangedEventPayload>('UserDataChanged', { room: this })
@@ -399,6 +407,9 @@ export class OdinRoom {
         break;
       }
       case 'PeerJoined': {
+        if (!roomUpdate.peer) {
+          throw Error(`The room update of kind ${roomUpdate.kind} is missing fields.`);
+        }
         const peer = this.addRemotePeer(
           roomUpdate.peer.id,
           roomUpdate.peer.user_id,
@@ -413,6 +424,9 @@ export class OdinRoom {
         break;
       }
       case 'PeerLeft': {
+        if (!roomUpdate.peer_id) {
+          throw Error(`The room update of kind ${roomUpdate.kind} is missing fields.`);
+        }
         const peer = await this.removePeer(roomUpdate.peer_id);
         if (peer) {
           this.eventTarget.dispatchEvent(
@@ -429,13 +443,16 @@ export class OdinRoom {
    *
    * @private
    */
-  private peerUpdated(update: any): void {
+  private peerUpdated(update: PeerUpdatedSchemaType): void {
     const peer = this._remotePeers.get(update.peer_id);
     if (!peer) {
       return;
     }
     switch (update.kind) {
       case 'MediaStarted': {
+        if (!update.media) {
+          throw Error(`The peer update of kind ${update.kind} is missing fields.`);
+        }
         const media = new OdinMedia(update.media.id, update.peer_id, true);
         peer.addMedia(media);
         peer.eventTarget.dispatchEvent(
@@ -447,6 +464,9 @@ export class OdinRoom {
         break;
       }
       case 'MediaStopped': {
+        if (!update.media_id) {
+          throw Error(`The peer update of kind ${update.kind} is missing fields.`);
+        }
         const media = peer.medias.get(update.media_id);
         peer.removeMediaById(update.media_id);
         if (media) {
@@ -460,6 +480,9 @@ export class OdinRoom {
         break;
       }
       case 'UserDataChanged': {
+        if (!update.user_data) {
+          throw Error(`The peer update of kind ${update.kind} is missing fields.`);
+        }
         peer.data = update.user_data;
         peer.eventTarget.dispatchEvent(
           new OdinEvent<IOdinPeerDataChangedEventPayload>('UserDataChanged', { room: this, peer })

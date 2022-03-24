@@ -1,9 +1,10 @@
 import { pack, unpack } from 'msgpackr';
 import { OdinEventMethods } from './types';
-import { EventHandlers, eventSchemas, EventSchemas } from './schema-validation/types';
+import { EventHandlers, EVENT_SCHEMAS, EventSchemas } from './schema-validation/types';
 import { validate } from './schema-validation/schema';
+import { OdinRoom } from './room';
 
-export type StreamHandler = (method: OdinEventMethods, params: any[]) => void;
+export type StreamHandler = (method: OdinEventMethods, params: unknown) => void;
 
 export interface RequestResolve {
   method: string;
@@ -122,37 +123,6 @@ export class Stream {
       this.websocket.close();
     }
   }
-
-  /**
-   * Returns the schema, determined by the method of the matching request.
-   *
-   * @param requestId
-   */
-  getRequestSchema(requestId: number): any {
-    const request = this.requests.get(requestId);
-    if (!request) return;
-    switch (request.method) {
-      case 'Authenticate':
-        return {
-          type: 'Object',
-          fields: { room_ids: { array: true, type: 'String' } },
-        };
-      case 'SetupWebRtc':
-        return { type: 'Object', fields: { sdp: { type: 'String' } } };
-      case 'JoinRoom':
-        return { type: 'Object', fields: { stream_id: { type: 'Bigint' } } };
-      case 'StartMedia':
-        return null;
-      case 'StopMedia':
-        return null;
-      case 'SendMessage':
-        return null;
-      case 'UpdatePeer':
-        return null;
-      default:
-        throw new Error('Schema not found!');
-    }
-  }
 }
 
 /**
@@ -170,7 +140,7 @@ async function send(stream: Stream, id: number | null, method: string, params: a
   if (id === null) {
     return Promise.resolve();
   } else {
-    // If a timeout was set,define a new timeouthandle which deletes the request and closes the stream
+    // If a timeout was set, define a new timeout handle which deletes the request and closes the stream
     return new Promise((resolve, reject) => {
       let timeoutHandle = null;
       if (stream.timeout > 0) {
@@ -232,8 +202,6 @@ async function receive(stream: Stream, bytes: any) {
         (message[3] === null || typeof message[3] === 'object') &&
         (message[2] === null || message[3] === null);
 
-      // const request = this.requests.get(requestId);
-
       const result = message[3];
       if (valid) {
         receiveResponse(stream, message[1], message[2], result);
@@ -249,21 +217,8 @@ async function receive(stream: Stream, bytes: any) {
      */
     case 2: {
       const valid = message.length === 3 && typeof message[1] === 'string' && typeof message[2] === 'object';
-
-      const handler = makeHandler(eventSchemas, {
-        async RoomUpdated(result) {
-          await receiveRequest(stream, null, message[1], message[2]);
-        },
-        async PeerUpdated(result) {
-          await receiveRequest(stream, null, message[1], message[2]);
-        },
-        async MessageReceived(result) {
-          await receiveRequest(stream, null, message[1], message[2]);
-        },
-      });
-
       if (valid) {
-        handler(message[1], message[2]);
+        await receiveRequest(stream, null, message[1], message[2]);
       } else {
         console.error('received invalid formatted request', message);
       }
@@ -273,10 +228,10 @@ async function receive(stream: Stream, bytes: any) {
 }
 
 /**
- * Messagepack RPC response handling.
- * Executes the given handler method.
+ * MessagePack RPC request handling.
+ * Calls the given handler method.
  */
-async function receiveRequest(stream: Stream, id: number | null, method: OdinEventMethods, params: any) {
+async function receiveRequest(stream: Stream, id: number | null, method: OdinEventMethods, params: unknown) {
   try {
     const response = stream.handler(method, params);
     if (id !== null && stream.websocket !== null) {
@@ -291,9 +246,9 @@ async function receiveRequest(stream: Stream, id: number | null, method: OdinEve
 }
 
 /**
- * Messagepack response handling.
+ * MessagePack response handling.
  */
-function receiveResponse<T extends EventSchemas>(stream: Stream, id: number, error: string | undefined, result: any) {
+function receiveResponse<T extends EventSchemas>(stream: Stream, id: number, error: string | undefined, result: unknown) {
   const request = stream.requests.get(id);
   if (request === undefined) {
     return;
@@ -313,27 +268,47 @@ function receiveResponse<T extends EventSchemas>(stream: Stream, id: number, err
  * Creates a handler which correctly handles the event depending on the method and validates its params.
  *
  * @param schemas The object which provides the schemas that are used to check recursively the type of the value at runtime
- * @param handlers The event handler for the given schema<T>
+ * @param handlers All event handler for the given schema<T>
+ *
+ * @returns Returns a handler function that takes the method (type) and the params as argument (The msgpack params).
+ * Internally, this function checks, if the method is known in the schemas, and if this is the case, handle the event.
  */
-function makeHandler<T extends EventSchemas>(schemas: T, handlers: EventHandlers<T>) {
+export const makeHandler = <T extends EventSchemas, I>(schemas: T, handlers: EventHandlers<T, I>, instance: I) => {
   return (method: string, params: unknown) => {
     if (isKnownMethod(schemas, method)) {
-      handleEvent(schemas, handlers, method, params);
+      handleEvent(schemas, handlers, method, params, instance);
+    } else {
+      throw Error('Unknown method!');
     }
   };
-}
+};
 
-function isKnownMethod<T extends EventSchemas>(schemas: T, method: PropertyKey): method is keyof EventSchemas {
+/**
+ * Check if the method (from msgpack) is a property of the schema. If not, the event can not be handled.
+ * @param schemas Schema object
+ * @param method Name of the method
+ * @returns true if the property is a keyof EventSchemas (boolean)
+ */
+const isKnownMethod = <T extends EventSchemas>(schemas: T, method: PropertyKey): method is keyof EventSchemas => {
   return Object.getOwnPropertyDescriptor(schemas, method) != null;
-}
+};
 
-function handleEvent<T extends EventSchemas, U extends keyof T>(
+/**
+ * Validates the params and calls the given eventHandler, determined by the given method.
+ *
+ * @param schemas Schema object
+ * @param handlers All provided EventHandlers<T> while T is a EventSchema
+ * @param method A string which is one of the EventHandler names
+ * @param params The params that getting passes through and getting called
+ */
+const handleEvent = <T extends EventSchemas, U extends keyof T, I>(
   schemas: T,
-  handlers: EventHandlers<T>,
+  handlers: EventHandlers<T, I>,
   method: U,
-  params: unknown
-) {
+  params: unknown,
+  instance: I
+) => {
   const schema = schemas[method];
   validate(params, 'parameters', schema);
-  handlers[method](params);
-}
+  handlers[method](params, instance);
+};

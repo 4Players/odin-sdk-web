@@ -162,7 +162,7 @@ export class OdinClient {
    *
    * @private
    */
-  private static mainHandler(method: string, params: any[]): void {}
+  private static mainHandler(method: string, params: unknown): void {}
 
   /**
    * Authenticates against the gateway and returns its result.

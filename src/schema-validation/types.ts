@@ -47,17 +47,16 @@ export type EventSchemas = {
   [P in string]: Schema;
 };
 
-type EventHandler<T extends Schema> = (e: Unwrap<T>) => void;
+type EventHandler<T extends Schema, I> = (e: Unwrap<T>, instance: I) => void;
 
-/**
- * The type for the EventHandlers
- * The prop "Method in keyof T" is for example "RoomUpdated"
- * Therefore, the value has to be an EventHandler where T fits the value of a specific schema for example the value
- * of "RoomUpdated"
- */
-export type EventHandlers<T extends EventSchemas> = {
-  [Method in keyof T]: EventHandler<T[Method]>;
+export type EventHandlers<T extends EventSchemas, I> = {
+  [Method in keyof T]: EventHandler<T[Method], I>;
 };
+
+export type EventSchemaByMethod<Method extends keyof typeof EVENT_SCHEMAS> = Unwrap<typeof EVENT_SCHEMAS[Method]>;
+export type RoomUpdatedSchemaType = EventSchemaByMethod<'RoomUpdated'>['updates'][number];
+export type PeerUpdatedSchemaType = EventSchemaByMethod<'PeerUpdated'>;
+export type MessageReceivedSchemaType = EventSchemaByMethod<'MessageReceived'>;
 
 const MEDIA = create({
   type: 'Object',
@@ -101,6 +100,7 @@ const PEER = create({
     user_data: { type: 'U8' },
     user_id: { type: 'String' },
   },
+  optional: true,
 });
 
 const PEERS = create({
@@ -125,7 +125,7 @@ const ROOM = create({
   optional: true,
 });
 
-export const eventSchemas = {
+export const EVENT_SCHEMAS = {
   RoomUpdated: create({
     type: 'Object',
     fields: {
@@ -137,6 +137,9 @@ export const eventSchemas = {
           media_ids: { array: true, type: 'Number', optional: true },
           own_peer_id: { type: 'Number', optional: true },
           room: ROOM,
+          peer: PEER,
+          user_data: { type: 'U8', optional: true },
+          peer_id: { type: 'Number', optional: true },
         },
       },
     },
@@ -154,6 +157,7 @@ export const eventSchemas = {
         },
         optional: true,
       },
+      media_id: { type: 'Number', optional: true },
       user_data: {
         type: 'U8',
         optional: true,
