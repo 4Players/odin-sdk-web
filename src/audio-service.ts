@@ -198,6 +198,8 @@ export class AudioService {
 
     this._encoderNode.port.postMessage({ type: 'initialize', worker: encoderPipe.port2 }, [encoderPipe.port2]);
     this._decoderNode.port.postMessage({ type: 'initialize', worker: decoderPipe.port2 }, [decoderPipe.port2]);
+
+    this._decoderNode.connect(this._audioContext.destination);
   }
 
   /**
@@ -217,9 +219,11 @@ export class AudioService {
     }
 
     const audioTrack = ms.getAudioTracks()[0];
+
     // Apply ugly workaround to apply echo cancellation in Chromium based browsers
     if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
       const outputDestination = this._audioContext.createMediaStreamDestination();
+      this._decoderNode.disconnect(this._audioContext.destination);
       this._decoderNode.connect(outputDestination);
 
       const webrtc = await this.webrtcLoopback(audioTrack, outputDestination.stream.getAudioTracks()[0]);
@@ -236,10 +240,8 @@ export class AudioService {
       this._audioElement = new Audio();
       this._audioElement.srcObject = outputStream;
       this._audioElement.volume = 1;
-      console.log(' this._audioElement.play();');
       await this._audioElement.play();
     } else {
-      this._decoderNode.connect(this._audioContext.destination);
       this._audioSource = this._audioContext.createMediaStreamSource(ms);
       this._audioSource.connect(this._encoderNode);
     }
@@ -256,6 +258,8 @@ export class AudioService {
     }
 
     const audioTrack = ms.getAudioTracks()[0];
+
+    // Apply ugly workaround to apply echo cancellation in Chromium based browsers
     if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
       const outputDestination = this._audioContext.createMediaStreamDestination();
       const webrtc = await this.webrtcLoopback(audioTrack, outputDestination.stream.getAudioTracks()[0]);
