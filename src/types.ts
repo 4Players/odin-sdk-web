@@ -83,47 +83,9 @@ export interface IRoomData {
 }
 
 /**
- * Interface describing an error which could occur when trying to join a room.
- */
-export interface IRoomJoinError {
-  reason: string;
-}
-
-/**
  * Possible events received from the ODIN server.
  */
 export type OdinEventMethods = 'RoomUpdated' | 'PeerUpdated' | 'MessageReceived';
-
-/**
- * Interfaces describing the different kinds of room update events received from an ODIN server.
- */
-export interface RoomJoinedUpdate {
-  kind: 'Joined';
-  room: IRoomData;
-  media_ids: number[];
-  own_peer_id: number;
-}
-export interface RoomLeftUpdate {
-  kind: 'Left';
-}
-export interface RoomDataChangedUpdate {
-  kind: 'UserDataChanged';
-  user_data: Uint8Array;
-}
-export interface RoomPeerJoinedUpdate {
-  kind: 'PeerJoined';
-  peer: IPeerData;
-}
-export interface RoomPeerLeftUpdate {
-  kind: 'PeerLeft';
-  peer_id: number;
-}
-export type RoomUpdate =
-  | RoomJoinedUpdate
-  | RoomLeftUpdate
-  | RoomDataChangedUpdate
-  | RoomPeerJoinedUpdate
-  | RoomPeerLeftUpdate;
 
 /**
  * Interface describing encoder/decoder statistics from the audio worker.
@@ -156,24 +118,7 @@ export interface IOdinAudioStats {
 /**
  * Enum defining all possible connection states of the ODIN client.
  */
-export enum OdinConnectionState {
-  /**
-   * Connection is closed.
-   */
-  disconnected,
-  /**
-   * Connection is being established.
-   */
-  connecting,
-  /**
-   * Connection is established.
-   */
-  connected,
-  /**
-   * Connection is in an error state.
-   */
-  error,
-}
+export type OdinConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 /**
  * Interface describing the payload of an `OdinConnectionStateChangedEvent`.

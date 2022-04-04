@@ -1,23 +1,23 @@
 import {
+  IMessageData,
+  IOdinAudioSettings,
+  IOdinConnectionStateChangedEventPayload,
+  IOdinMediaStartedStoppedEventPayload,
+  IOdinMessageReceivedEventPayload,
+  IOdinPeerDataChangedEventPayload,
+  IOdinPeerJoinedLeftEventPayload,
+  IOdinRoomDataChangedEventPayload,
+  IOdinRoomEvents,
+  IOdinRoomJoinedLeftEventPayload,
   OdinConnectionState,
   OdinEvent,
-  IOdinRoomEvents,
-  IOdinConnectionStateChangedEventPayload,
-  IMessageData,
-  IOdinMessageReceivedEventPayload,
-  IOdinRoomJoinedLeftEventPayload,
-  IOdinRoomDataChangedEventPayload,
-  IOdinPeerJoinedLeftEventPayload,
-  IOdinMediaStartedStoppedEventPayload,
-  IOdinPeerDataChangedEventPayload,
-  IOdinAudioSettings,
 } from './types';
 import { AudioService } from './audio-service';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
 import { makeHandler, Stream } from './stream';
 import { openStream, parseJwt } from './utils';
-import { EventSchemaByMethod, EVENT_SCHEMAS, PeerUpdatedSchemaType } from './schema-validation/types';
+import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './schema-validation/types';
 
 /**
  * Class describing an `OdinRoom`.
@@ -29,7 +29,7 @@ export class OdinRoom {
   private _remotePeers: Map<number, OdinPeer> = new Map();
   private _roomStream!: Stream;
   private _eventTarget: EventTarget = new EventTarget();
-  private _connectionState: OdinConnectionState = OdinConnectionState.disconnected;
+  private _connectionState: OdinConnectionState = 'disconnected';
   private _audioService!: AudioService;
   private _position!: [number, number];
 
@@ -91,13 +91,13 @@ export class OdinRoom {
    * Update the connection state of the room.
    */
   private set connectionState(state: OdinConnectionState) {
-    const oldState = this.connectionState;
+    const oldState = this._connectionState;
     this._connectionState = state;
     if (oldState !== state) {
       this.eventTarget.dispatchEvent(
         new OdinEvent<IOdinConnectionStateChangedEventPayload>('ConnectionStateChanged', { oldState, newState: state })
       );
-      if (state === OdinConnectionState.disconnected) {
+      if (state === 'disconnected') {
         this.eventTarget.dispatchEvent(
           new OdinEvent<IOdinRoomJoinedLeftEventPayload>('Left', {
             room: this,
@@ -145,7 +145,7 @@ export class OdinRoom {
    * @returns A promise of the own OdinPeer which yields when the room was joined
    */
   async join(userData?: Uint8Array, position?: [number, number]): Promise<OdinPeer> {
-    this.connectionState = OdinConnectionState.connecting;
+    this.connectionState = 'connecting';
     if (!position) {
       const a = Math.random() * 2 * Math.PI;
       const r = 0.5 * Math.sqrt(Math.random());
@@ -156,21 +156,38 @@ export class OdinRoom {
     if (!userData) {
       userData = new Uint8Array();
     }
-    const { stream_id } = await this._mainStream.request('JoinRoom', {
-      room_id: this.id,
-      user_data: userData,
-      position: position,
-    });
+
+    let streamId: string | undefined;
     try {
-      this._roomStream = await openStream(`wss://${this._address}?${stream_id}`, this.streamHandler.bind(this));
-
-      await new Promise((resolve) =>
-        this._eventTarget.addEventListener('ConnectionStateChanged', resolve, { once: true })
-      );
-
-      if (!this._ownPeer) {
-        throw new Error('Unable to join room; own peer information is not available');
+      try {
+        const result = await this._mainStream.request('JoinRoom', {
+          room_id: this.id,
+          user_data: userData,
+          position: position,
+        }) as {stream_id: string};
+        streamId = result.stream_id;
+      } catch (e) {
+        throw new Error('JoinRoom on the main stream failed\n' + e);
       }
+      if (!streamId) throw new Error('No Stream ID fetched\n');
+
+      try {
+        this._roomStream = await openStream(`wss://${this._address}?${streamId}`, this.streamHandler.bind(this));
+        this._roomStream.onclose = () => {
+          this.connectionState = 'disconnected';
+          this.disconnect();
+        };
+      } catch (e) {
+        throw new Error('Could not open the room stream\n' + e);
+      }
+
+      await new Promise<void>((resolve, reject) =>
+        this.addEventListener('ConnectionStateChanged', (connection) => {
+          console.log('join() connection state; ', connection.payload);
+          if (connection.payload.newState === 'connected') {
+            resolve();
+          }
+        }));
 
       this._ownPeer.data = userData;
 
@@ -182,20 +199,23 @@ export class OdinRoom {
 
       return this._ownPeer;
     } catch (e) {
-      this.connectionState = OdinConnectionState.error;
-      throw e;
+      this.connectionState = 'error';
+      throw new Error('Could not join the room\n' + e);
     }
   }
 
   /**
    * Changes the active capture stream.
    */
-  changeMediaStream(ms: MediaStream) {
-    if (this.connectionState !== OdinConnectionState.connected) {
-      throw new Error('Unable to change media stream; room is not connected');
+  async changeMediaStream(ms: MediaStream) {
+    if (this.connectionState !== 'connected') {
+      throw new Error('Unable to change media stream; room is not connected\n');
     }
-
-    this._audioService.changeMediaStream(ms);
+    try {
+      await this._audioService.changeMediaStream(ms);
+    } catch (e) {
+      throw new Error('Could not change MediaStream\n' + e);
+    }
   }
 
   /**
@@ -206,10 +226,10 @@ export class OdinRoom {
    * @returns A Promise of the newly created OdinMedia.
    */
   async createMedia(ms: MediaStream, audioSettings?: IOdinAudioSettings): Promise<OdinMedia> {
-    if (this.connectionState !== OdinConnectionState.connected) {
-      throw new Error('Unable to create new media; room is not connected');
+    if (this.connectionState !== 'connected') {
+      throw new Error('Unable to create new media; room is not connected\n');
     } else if (!this._ownPeer) {
-      throw new Error('Unable to create new media; own peer information is not available');
+      throw new Error('Unable to create new media; own peer information is not available\n');
     }
 
     await this._audioService.startRecording(ms, audioSettings);
@@ -240,7 +260,7 @@ export class OdinRoom {
    */
   async addMedia(media: OdinMedia) {
     if (media.remote) {
-      throw new Error('Unable to add new media; media is owned by a remote peer');
+      throw new Error('Unable to add new media; media is owned by a remote peer\n');
     }
 
     await this._roomStream?.request('StartMedia', {
@@ -257,7 +277,7 @@ export class OdinRoom {
    */
   async removeMedia(media: OdinMedia) {
     if (media.remote) {
-      throw new Error('Unable to remove media; media is owned by a remote peer');
+      throw new Error('Unable to remove media; media is owned by a remote peer\n');
     }
 
     await this._roomStream?.request('StopMedia', {
@@ -274,7 +294,7 @@ export class OdinRoom {
    */
   setPosition(offsetX: number, offsetY: number): void {
     this._position = [offsetX, offsetY];
-    if (this._connectionState === OdinConnectionState.connected) {
+    if (this._connectionState === 'connected') {
       this._roomStream?.request('SetPeerPosition', {
         position: [offsetX, offsetY],
       });
@@ -321,13 +341,14 @@ export class OdinRoom {
   }
 
   /**
-   * Rests the internal peers list and closes the room stream.
+   * Disconnects the room
    *
    * @ignore
    */
-  reset(): void {
+  disconnect(): void {
     this._remotePeers.clear();
     this._roomStream?.close();
+    this.connectionState = 'disconnected';
   }
 
   /**
@@ -393,7 +414,7 @@ export class OdinRoom {
             );
           });
         }
-        this.connectionState = OdinConnectionState.connected;
+        this.connectionState = 'connected';
         break;
       }
       case 'UserDataChanged': {
@@ -518,7 +539,7 @@ export class OdinRoom {
    */
   private addRemotePeer(peerId: number, userId: string, medias: { id: number }[], data: Uint8Array): OdinPeer {
     if (peerId === this._ownPeer.id) {
-      throw new Error('Can not add the remote peer with this method.');
+      throw new Error('Can not add the remote peer with this method\n');
     }
     const peer = new OdinPeer(peerId, userId);
     peer.data = data;

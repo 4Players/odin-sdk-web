@@ -22,15 +22,20 @@ export class RtcHandler {
    * @param mainStream
    */
   async startRtc(mainStream: Stream): Promise<void> {
-    const offer = await this._rtc.createOffer();
-    await this._rtc.setLocalDescription(offer);
-    const answer: { sdp: string } = await mainStream.request('SetupWebRtc', {
-      sdp: offer.sdp,
-    });
-    await this._rtc.setRemoteDescription({
-      type: 'answer',
-      sdp: answer.sdp,
-    });
+    try {
+      const offer = await this._rtc.createOffer();
+      console.log('Rtc offer: ', offer);
+      await this._rtc.setLocalDescription(offer);
+      const answer = await mainStream.request('SetupWebRtc', {
+        sdp: offer.sdp,
+      }) as { sdp: string };
+      await this._rtc.setRemoteDescription({
+        type: 'answer',
+        sdp: answer.sdp,
+      });
+    } catch (e) {
+      throw new Error('Error when starting WebRTC\n' + e);
+    }
   }
 
   private setUpAudioChannel(worker: Worker, audioChannel: RTCDataChannel): void {

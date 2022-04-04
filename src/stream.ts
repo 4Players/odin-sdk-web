@@ -27,8 +27,8 @@ export class Stream {
       this._requests.forEach(({ reject }) => reject(new Error('closed')));
       this._requests.clear();
     });
-    this._websocket.addEventListener('message', (e) => {
-      receive(this, e.data);
+    this._websocket.addEventListener('message', async (e) => {
+      await receive(this, e.data);
     });
   }
 
@@ -113,7 +113,7 @@ export class Stream {
     }
   }
 
-  request(method: string, params: any): any {
+  request(method: string, params: any): Promise<unknown> {
     const id = this.nextId++;
     return send(this, id, method, params);
   }
@@ -146,7 +146,7 @@ async function send(stream: Stream, id: number | null, method: string, params: a
       if (stream.timeout > 0) {
         timeoutHandle = setTimeout(() => {
           if (stream.requests.delete(id)) {
-            reject(new Error('timeout'));
+            reject(new Error('timeout at method: ' + method));
             stream.close();
           }
         }, stream.timeout);

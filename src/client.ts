@@ -22,7 +22,7 @@ export class OdinClient {
   private static _rooms: OdinRoom[] = [];
   private static _rtcHandler: RtcHandler;
   private static _audioService: AudioService;
-  private static _state: OdinConnectionState = OdinConnectionState.disconnected;
+  private static _state: OdinConnectionState = 'disconnected';
   private static _worker: Worker;
 
   /**
@@ -81,38 +81,43 @@ export class OdinClient {
    * @private
    */
   private static async connect(token: string, gateway?: string): Promise<OdinRoom[]> {
-    if (this.connectionState === OdinConnectionState.connected) {
+    if (this.connectionState === 'connected') {
       return this._rooms;
     }
 
     if (!this.config.gatewayUrl && !gateway) {
-      throw new Error('No gateway URL configured');
+      throw new Error('No gateway URL configured\n');
     }
 
     this._worker = new Worker(workerScript);
     this._rtcHandler = new RtcHandler(this._worker);
     this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel);
-    this.connectionState = OdinConnectionState.connecting;
+    this.connectionState = 'connecting';
 
     try {
       const gatewayAuthResult = await this.authGateway(token, gateway ?? this.config.gatewayUrl);
       this._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, this.mainHandler);
+      console.log('this._mainStream: ', this._mainStream);
 
       this._mainStream.onclose = () => {
-        this.connectionState = OdinConnectionState.disconnected;
+        this.connectionState = 'disconnected';
         this.disconnect();
       };
 
       this._mainStream.onerror = () => {
-        this.connectionState = OdinConnectionState.error;
+        this.connectionState = 'error';
         this.disconnect();
       };
 
+      // let mainStreamAuthResult: {room_ids: string[]} | undefined;
       const mainStreamAuthResult = await this._mainStream.request('Authenticate', {
         token: gatewayAuthResult.token,
-      });
+      }) as {room_ids: string[]};
 
-      const roomIds: string[] = mainStreamAuthResult.room_ids;
+      let roomIds: string[] = [];
+      if (mainStreamAuthResult && mainStreamAuthResult.room_ids) {
+        roomIds = mainStreamAuthResult.room_ids;
+      }
 
       await this._rtcHandler.startRtc(this._mainStream);
       await this._audioService.setupAudio();
@@ -121,11 +126,21 @@ export class OdinClient {
         return new OdinRoom(roomId, token, gatewayAuthResult.address, this._mainStream);
       });
 
-      this.connectionState = OdinConnectionState.connected;
+      /**
+       * Currently, if the connection of the room gets closed, also close the connection of the OdinClient.
+       * This might change, once multiple rooms will get supported.
+       */
+      for (const room of this._rooms) {
+        room.addEventListener('Left', (leftEvent) => {
+          this.disconnect();
+        });
+      }
+
+      this.connectionState = 'connected';
       return this._rooms;
     } catch (e) {
-      this.connectionState = OdinConnectionState.error;
-      throw new Error('Failed to establish main stream connection');
+      this.connectionState = 'error';
+      throw new Error('Failed to establish main stream connection\n' + e);
     }
   }
 
@@ -137,7 +152,11 @@ export class OdinClient {
    * @returns A promise of the available rooms
    */
   static async initRooms(token: string, gateway?: string): Promise<OdinRoom[]> {
-    return await this.connect(token, gateway);
+    try {
+      return await this.connect(token, gateway);
+    } catch (e) {
+      throw new Error('Could not connect the rooms\n' + e);
+    }
   }
 
   /**
@@ -153,7 +172,7 @@ export class OdinClient {
     if (rooms.length) {
       return rooms[0];
     } else {
-      throw new Error('Could not create a room');
+      throw new Error('Could not create a room\n');
     }
   }
 
@@ -170,24 +189,29 @@ export class OdinClient {
    * @private
    */
   private static async authGateway(token: string, gateway: string): Promise<IAuthResult> {
-    const response = await fetch(gateway, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'Connect',
-        params: {},
-      }),
-    });
+    let response: Response | undefined;
+    try {
+      response = await fetch(gateway, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'Connect',
+          params: {},
+        }),
+      });
+    } catch (e) {
+      throw new Error('Error happened when authenticating at the gateway\n' + e);
+    }
     const body = await response.json();
     if (body.result) {
       return body.result;
     } else {
-      throw new Error(`Gateway authentication failed; ${body.error.message}`);
+      throw new Error(`Gateway authentication failed:\n ${body.error.message}`);
     }
   }
 
@@ -196,7 +220,9 @@ export class OdinClient {
    */
   static disconnect(): void {
     this._rooms.forEach((room) => {
-      room.reset();
+      if (room.connectionState !== 'disconnected') {
+        room.disconnect();
+      }
     });
 
     if (this._audioService) {
