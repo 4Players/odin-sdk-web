@@ -31,3 +31,7 @@ export {
   IOdinClientSettings,
   IOdinAudioStats,
 } from './types';
+export {
+  uint8ArrayToValue,
+  valueToUint8Array,
+} from './utils';

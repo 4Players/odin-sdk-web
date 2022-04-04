@@ -1,5 +1,5 @@
 import { generateAccessKey, TokenGenerator } from '@4players/odin-tokens';
-import { OdinClient, OdinConnectionState, OdinMedia, OdinPeer, OdinRoom } from '@4players/odin';
+import { OdinClient, OdinMedia, OdinPeer, OdinRoom, uint8ArrayToValue, valueToUint8Array } from '@4players/odin';
 
 import './style.css';
 
@@ -45,7 +45,8 @@ async function connect(token: string) {
     handleRoomEvents(odinRoom);
 
     // Join the room and specify initial user data
-    await odinRoom.join(stringToByteArray(userData));
+    const ownPeer = await odinRoom.join(valueToUint8Array(userData));
+    addOrUpdateUiPeer(ownPeer);
 
     // Create a new audio stream for the default capture device and append it to the room
     navigator.mediaDevices
@@ -71,6 +72,28 @@ async function connect(token: string) {
  * Helper function to set event handlers for ODIN room events.
  */
 function handleRoomEvents(room: OdinRoom) {
+  room.addEventListener('ConnectionStateChanged', (event) => {
+    console.log('Client connection status changed', event.payload.newState);
+
+    if (event.payload.newState !== 'disconnected') {
+      accessKeyInput?.setAttribute('disabled', 'disabled');
+      userIdInput?.setAttribute('disabled', 'disabled');
+      roomIdInput?.setAttribute('disabled', 'disabled');
+      generateAccessKeyBtn?.setAttribute('disabled', 'disabled');
+      if (toggleConnectionBtn) toggleConnectionBtn.innerHTML = 'Leave';
+    } else {
+      resetUi();
+    }
+
+    const title = app.querySelector('#room-title');
+    if (title) {
+      title.innerHTML =
+        event.payload.newState === 'connected'
+          ? `Joined '${OdinClient.rooms[0].id}' on ${OdinClient.rooms[0].serverAddress}`
+          : 'Not Connected';
+    }
+  });
+
   // Handle peer join events to update our UI
   room.addEventListener('PeerJoined', (event) => {
     console.log(`Adding peer ${event.payload.peer.id}`);
@@ -175,9 +198,9 @@ userDataInput?.addEventListener('change', (e: any) => {
   userData = (e.target as HTMLInputElement).value;
 
   // if we're connected, also send an update of our own user data to the server
-  if (OdinClient.connectionState === OdinConnectionState.connected) {
+  if (OdinClient.connectionState === 'connected') {
     const ownPeer = OdinClient.rooms[0].ownPeer;
-    ownPeer.data = stringToByteArray(userData);
+    ownPeer.data = valueToUint8Array(userData);
     ownPeer.update(); // flush user data update
     console.log('Sent updated peer user data to server', ownPeer.data);
     addOrUpdateUiPeer(ownPeer);
@@ -209,8 +232,8 @@ generateAccessKeyBtn?.addEventListener('click', () => {
 const toggleConnectionBtn = document.querySelector<HTMLButtonElement>('#toggle-connection');
 toggleConnectionBtn?.addEventListener('click', (e: any) => {
   if (
-    OdinClient.connectionState === OdinConnectionState.disconnected ||
-    OdinClient.connectionState === OdinConnectionState.error
+    OdinClient.connectionState === 'disconnected' ||
+    OdinClient.connectionState === 'error'
   ) {
     const tokenGenerator = new TokenGenerator(accessKey);
     const token = tokenGenerator.createToken(roomId, userId);
@@ -218,31 +241,6 @@ toggleConnectionBtn?.addEventListener('click', (e: any) => {
     connect(token);
   } else {
     disconnect();
-  }
-});
-
-/**
- * Handle connection state changes and conditionally enable/disable UI elements.
- */
-OdinClient.addEventListener('ConnectionStateChanged', (event) => {
-  console.log('Client connection status changed', event.payload.newState);
-
-  if (event.payload.newState !== OdinConnectionState.disconnected) {
-    accessKeyInput?.setAttribute('disabled', 'disabled');
-    userIdInput?.setAttribute('disabled', 'disabled');
-    roomIdInput?.setAttribute('disabled', 'disabled');
-    generateAccessKeyBtn?.setAttribute('disabled', 'disabled');
-    if (toggleConnectionBtn) toggleConnectionBtn.innerHTML = 'Leave';
-  } else {
-    resetUi();
-  }
-
-  const title = app.querySelector('#room-title');
-  if (title) {
-    title.innerHTML =
-      event.payload.newState === OdinConnectionState.connected
-        ? `Joined '${OdinClient.rooms[0].id}' on ${OdinClient.rooms[0].serverAddress}`
-        : 'Not Connected';
   }
 });
 
@@ -258,10 +256,15 @@ function addOrUpdateUiPeer(peer: OdinPeer) {
   }
 
   const peerItem = app.querySelector(`#peer-${peer.id}`) ?? document.createElement('li');
-  const peerUserData = byteArrayToString(peer.data);
+
+  const decodedData: unknown = uint8ArrayToValue(peer.data);
+  let userData: string = '';
+  if (decodedData && typeof decodedData === 'string') {
+    userData = decodedData;
+  }
 
   peerItem.setAttribute('id', `peer-${peer.id}`);
-  peerItem.innerHTML = `Peer(${peer.id}) <div> User ID: ${peer.userId} <br> User Data: ${peerUserData} <div>`;
+  peerItem.innerHTML = `Peer(${peer.id}) <div> User ID: ${peer.userId} <br> User Data: ${userData} <div>`;
   container.append(peerItem);
 
   const mediaList = document.createElement('ul');
@@ -304,20 +307,4 @@ function resetUi() {
   generateAccessKeyBtn?.removeAttribute('disabled');
   if (toggleConnectionBtn) toggleConnectionBtn.innerHTML = 'Join';
   app.querySelector('#peer-container')?.remove();
-}
-
-/**
- * Helper function to convert user data from string to byte-array.
- */
-function stringToByteArray(str: string): Uint8Array {
-  const utf8Encode = new TextEncoder();
-  return utf8Encode.encode(str);
-}
-
-/**
- * Helper function to convert user data from byte-array to string.
- */
-function byteArrayToString(bytes: Uint8Array) {
-  const utf8Decode = new TextDecoder();
-  return utf8Decode.decode(bytes);
 }
