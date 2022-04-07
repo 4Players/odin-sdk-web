@@ -160,11 +160,11 @@ export class OdinRoom {
     let streamId: string | undefined;
     try {
       try {
-        const result = await this._mainStream.request('JoinRoom', {
+        const result = (await this._mainStream.request('JoinRoom', {
           room_id: this.id,
           user_data: userData,
           position: position,
-        }) as {stream_id: string};
+        })) as { stream_id: string };
         streamId = result.stream_id;
       } catch (e) {
         throw new Error('JoinRoom on the main stream failed\n' + e);
@@ -183,11 +183,11 @@ export class OdinRoom {
 
       await new Promise<void>((resolve, reject) =>
         this.addEventListener('ConnectionStateChanged', (connection) => {
-          console.log('join() connection state; ', connection.payload);
           if (connection.payload.newState === 'connected') {
             resolve();
           }
-        }));
+        })
+      );
 
       this._ownPeer.data = userData;
 

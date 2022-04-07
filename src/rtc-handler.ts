@@ -24,11 +24,10 @@ export class RtcHandler {
   async startRtc(mainStream: Stream): Promise<void> {
     try {
       const offer = await this._rtc.createOffer();
-      console.log('Rtc offer: ', offer);
       await this._rtc.setLocalDescription(offer);
-      const answer = await mainStream.request('SetupWebRtc', {
+      const answer = (await mainStream.request('SetupWebRtc', {
         sdp: offer.sdp,
-      }) as { sdp: string };
+      })) as { sdp: string };
       await this._rtc.setRemoteDescription({
         type: 'answer',
         sdp: answer.sdp,

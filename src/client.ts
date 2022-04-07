@@ -97,7 +97,6 @@ export class OdinClient {
     try {
       const gatewayAuthResult = await this.authGateway(token, gateway ?? this.config.gatewayUrl);
       this._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, this.mainHandler);
-      console.log('this._mainStream: ', this._mainStream);
 
       this._mainStream.onclose = () => {
         this.connectionState = 'disconnected';
@@ -110,9 +109,9 @@ export class OdinClient {
       };
 
       // let mainStreamAuthResult: {room_ids: string[]} | undefined;
-      const mainStreamAuthResult = await this._mainStream.request('Authenticate', {
+      const mainStreamAuthResult = (await this._mainStream.request('Authenticate', {
         token: gatewayAuthResult.token,
-      }) as {room_ids: string[]};
+      })) as { room_ids: string[] };
 
       let roomIds: string[] = [];
       if (mainStreamAuthResult && mainStreamAuthResult.room_ids) {
