@@ -1,11 +1,15 @@
 # Changelog
 
+## 0.8.1
+
+- Removed debug logs.
+
 ## 0.8.0
 
 - Changed the `OdinConnectionState` enum to a string union `'disconnected' | 'connecting' | 'connected' | 'error'`.
 - Improved connection error handling.
-- Renamed `OdinRoom.reset` to `OdinRoom.disconnect()`. Note, that `OdinRoom.disconnect` also disconnects the active `OdinClient`.
-- Added some helper functions for easy type conversion when working with `OdinPeer.userData` or `OdinRoom.userData`
+- Renamed `OdinRoom.reset` to `OdinRoom.disconnect`. Note, that `OdinRoom.disconnect` also disconnects the active `OdinClient`.
+- Added some helper functions for easy type conversion when working with `OdinPeer.userData` or `OdinRoom.userData`.
 
 ## 0.7.2
 
