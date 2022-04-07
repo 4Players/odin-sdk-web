@@ -231,10 +231,7 @@ generateAccessKeyBtn?.addEventListener('click', () => {
  */
 const toggleConnectionBtn = document.querySelector<HTMLButtonElement>('#toggle-connection');
 toggleConnectionBtn?.addEventListener('click', (e: any) => {
-  if (
-    OdinClient.connectionState === 'disconnected' ||
-    OdinClient.connectionState === 'error'
-  ) {
+  if (OdinClient.connectionState === 'disconnected' || OdinClient.connectionState === 'error') {
     const tokenGenerator = new TokenGenerator(accessKey);
     const token = tokenGenerator.createToken(roomId, userId);
     console.log('Generated a new signed JWT to join room', token);
