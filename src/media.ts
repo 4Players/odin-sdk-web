@@ -62,9 +62,9 @@ export class OdinMedia {
   }
 
   /**
-   * Indicates whether or not the media is registered in the audio service instance.
+   * Indicates whether or not the media is registered in the audio service instance (e.g. started).
    */
-  get registered(): boolean {
+  get started(): boolean {
     return this._audioService.hasMedia(this._id);
   }
 
@@ -90,7 +90,7 @@ export class OdinMedia {
    * @returns A promise which yields when the request is resolved
    */
   async start(): Promise<void> {
-    if (this.registered) return;
+    if (this.started) return;
 
     if (this._remote) {
       this._audioService.audioWorker.postMessage({
@@ -120,7 +120,7 @@ export class OdinMedia {
    * @returns A promise which yields when the request is resolved
    */
   async stop(): Promise<void> {
-    if (!this.registered) return;
+    if (!this.started) return;
 
     if (this._remote) {
       this._audioService.audioWorker.postMessage({
