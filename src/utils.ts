@@ -31,23 +31,25 @@ export function parseJwt(token: string) {
 
 /**
  * Encodes a value or an object with the help of JSON.stringify to an Uint8Array.
- * @param value Value or object to encode.
- * @returns The Uint8Array encoded value.
+ *
+ * @param value Value or object to encode
+ * @returns The Uint8Array encoded value
  */
 export function valueToUint8Array(value: any): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(value));
 }
 
 /**
- * Decodes a Uint8Array
+ * Decodes a Uint8Array.
+ *
  * @param bytes Byte array to decode
- * @returns The decoded value
+ * @returns The decoded value or undefined on error
  */
 export function uint8ArrayToValue(bytes: Uint8Array): unknown {
-  if (bytes.length === 0) throw new Error('Can not decode an empty Uint8Array.\n');
+  if (bytes.length === 0) return undefined;
   try {
     return JSON.parse(new TextDecoder().decode(bytes));
   } catch (e) {
-    throw new Error('Could not decode the given value.\n' + e);
+    return undefined;
   }
 }
