@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Renamed `OdinMedia.registered` to `OdinMedia.started` for convenience.
+- Fixed an error when trying to decode an empty byte array.
+
 ## 0.8.1
 
 - Removed debug logs.
