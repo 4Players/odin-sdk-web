@@ -163,7 +163,7 @@ export class OdinRoom {
         const result = (await this._mainStream.request('JoinRoom', {
           room_id: this.id,
           user_data: userData,
-          position: position,
+          position,
         })) as { stream_id: string };
         streamId = result.stream_id;
       } catch (e) {
