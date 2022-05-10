@@ -89,7 +89,7 @@ function handleRoomEvents(room: OdinRoom) {
     if (title) {
       title.innerHTML =
         event.payload.newState === 'connected'
-          ? `Joined '${OdinClient.rooms[0].id}' on ${OdinClient.rooms[0].serverAddress}`
+          ? `Joined '${room.id}' on ${room.serverAddress}`
           : 'Not Connected';
     }
   });
