@@ -80,7 +80,7 @@ export class OdinClient {
    *
    * @private
    */
-  private static async connect(token: string, gateway?: string): Promise<OdinRoom[]> {
+  private static async connect(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom[]> {
     if (this.connectionState === 'connected') {
       return this._rooms;
     }
@@ -89,7 +89,7 @@ export class OdinClient {
       throw new Error('No gateway URL configured\n');
     }
 
-    const audioContext = new AudioContext({ sampleRate: 48000 });
+    if (!audioContext) audioContext = new AudioContext({ sampleRate: 48000 });
     await audioContext.resume();
 
     this._worker = new Worker(workerScript);
@@ -153,9 +153,9 @@ export class OdinClient {
    * @param gateway The gateway to authenticate against
    * @returns A promise of the available rooms
    */
-  static async initRooms(token: string, gateway?: string): Promise<OdinRoom[]> {
+  static async initRooms(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom[]> {
     try {
-      return await this.connect(token, gateway);
+      return await this.connect(token, gateway, audioContext);
     } catch (e) {
       throw new Error('Could not connect the rooms\n' + e);
     }
@@ -168,8 +168,8 @@ export class OdinClient {
    * @param gateway The gateway to authenticate against
    * @returns A promise of the first available room
    */
-  static async initRoom(token: string, gateway?: string): Promise<OdinRoom> {
-    const rooms = await this.initRooms(token, gateway);
+  static async initRoom(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom> {
+    const rooms = await this.initRooms(token, gateway, audioContext);
 
     if (rooms.length) {
       return rooms[0];
