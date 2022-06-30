@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.2
+
+- Fixed broken audio in Safari 15.4 or later.
+
+## 0.9.1
+
+- Added a new prop `OdinPeer.remote` to differentiate between your own peer and others.
+
 ## 0.9.0
 
 - Renamed `OdinMedia.registered` to `OdinMedia.started` for convenience.
