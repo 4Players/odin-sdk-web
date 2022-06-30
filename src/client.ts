@@ -89,9 +89,12 @@ export class OdinClient {
       throw new Error('No gateway URL configured\n');
     }
 
+    const audioContext = new AudioContext({ sampleRate: 48000 });
+    await audioContext.resume();
+
     this._worker = new Worker(workerScript);
     this._rtcHandler = new RtcHandler(this._worker);
-    this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel);
+    this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContext);
     this.connectionState = 'connecting';
 
     try {

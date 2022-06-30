@@ -18,7 +18,6 @@ export class AudioService {
   private static _instance: AudioService;
   private _audioElement: HTMLAudioElement | null = null;
   private _audioSource: MediaStreamAudioSourceNode | null = null;
-  private _audioContext: AudioContext = new AudioContext({ sampleRate: 48000 });
   private _encoderNode!: AudioWorkletNode;
   private _decoderNode!: AudioWorkletNode;
   private _medias: OdinMedia[] = [];
@@ -28,7 +27,11 @@ export class AudioService {
     voiceActivityDetection: true,
   };
 
-  private constructor(private _worker: Worker, private _audioDataChannel: RTCDataChannel) {
+  private constructor(
+    private _worker: Worker,
+    private _audioDataChannel: RTCDataChannel,
+    private _audioContext: AudioContext
+  ) {
     this._bowser = Bowser.getParser(window.navigator.userAgent);
 
     this._worker.onmessage = (event) => {
@@ -72,8 +75,8 @@ export class AudioService {
    * @param audioChannel  The RTC data channel used to transfer audio data
    * @param audioSettings Optional audio settings to apply
    */
-  static setInstance(worker: Worker, audioChannel: RTCDataChannel): AudioService {
-    this._instance = new AudioService(worker, audioChannel);
+  static setInstance(worker: Worker, audioChannel: RTCDataChannel, audioContext: AudioContext): AudioService {
+    this._instance = new AudioService(worker, audioChannel, audioContext);
     return this._instance;
   }
 
