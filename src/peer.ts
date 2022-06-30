@@ -16,9 +16,11 @@ export class OdinPeer {
    * Creates a new `OdinPeer` instance.
    *
    * @param _id The ID of the new peer
+   * @param _userId The user ID of the new peer
+   * @param _remote Indicates, whether the peer is a remote peer or not
    * @ignore
    */
-  constructor(private _id: number, private _userId: string) {
+  constructor(private _id: number, private _userId: string, private _remote: boolean) {
     const audioService = AudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
@@ -37,6 +39,13 @@ export class OdinPeer {
    */
   get userId(): string {
     return this._userId;
+  }
+
+  /**
+   * Indicates, whether the peer is a remote peer or not.
+   */
+  get remote(): boolean {
+    return this._remote;
   }
 
   /**

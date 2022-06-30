@@ -398,7 +398,7 @@ export class OdinRoom {
         }
         this._data = roomUpdate.room.user_data;
         this._customer = roomUpdate.room.customer;
-        this._ownPeer = new OdinPeer(roomUpdate.own_peer_id, parseJwt(this._token).uid ?? '');
+        this._ownPeer = new OdinPeer(roomUpdate.own_peer_id, parseJwt(this._token).uid ?? '', false);
         this._ownPeer.setFreeMediaIds(roomUpdate.media_ids);
         for (const remotePeer of roomUpdate.room.peers) {
           const peer = this.addRemotePeer(remotePeer.id, remotePeer.user_id, remotePeer.medias, remotePeer.user_data);
@@ -541,7 +541,7 @@ export class OdinRoom {
     if (peerId === this._ownPeer.id) {
       throw new Error('Can not add the remote peer with this method\n');
     }
-    const peer = new OdinPeer(peerId, userId);
+    const peer = new OdinPeer(peerId, userId, true);
     peer.data = data;
     medias.forEach((media) => {
       const mediaInstance = new OdinMedia(media.id, peerId, true);
