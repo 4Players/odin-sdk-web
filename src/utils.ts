@@ -4,7 +4,10 @@ import { JsonValue } from './types';
 export async function openStream(url: string, handler: StreamHandler): Promise<Stream> {
   const stream = new Stream(url, handler);
   try {
-    await new Promise((resolve) => stream.addEventListener('open', resolve, { once: true }));
+    await new Promise((resolve, reject) => {
+      stream.addEventListener('open', resolve, { once: true });
+      stream.addEventListener('error', reject, { once: true });
+    });
   } catch (e) {
     throw new Error('Could not open the main stream\n' + e);
   }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.4
+
+- Fixed a bug where the client could become unresponsive on failed connection attempts.
+
 ## 0.9.3
 
 - Added optional arguments to `OdinClient.initRoom` and `OdinClient.initRooms` to allow passing a custom AudioContext, which might be necessary on Apple platforms.
