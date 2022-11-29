@@ -88,16 +88,13 @@ function handleRoomEvents(room: OdinRoom) {
     const title = app.querySelector('#room-title');
     if (title) {
       title.innerHTML =
-        event.payload.newState === 'connected'
-          ? `Joined '${room.id}' on ${room.serverAddress}`
-          : 'Not Connected';
+        event.payload.newState === 'connected' ? `Joined '${room.id}' on ${room.serverAddress}` : 'Not Connected';
     }
   });
 
   // Handle peer join events to update our UI
   room.addEventListener('PeerJoined', (event) => {
     console.log(`Adding peer ${event.payload.peer.id}`);
-    console.log(event.payload.peer);
     addOrUpdateUiPeer(event.payload.peer);
   });
 
