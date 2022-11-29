@@ -24,7 +24,7 @@
   "types": "./lib/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "bundle": "tsc && rollup -c && terser dist/odin.js -c -o dist/odin.min.js",
+    "bundle": "tsc && rollup --config --configPlugin typescript && terser dist/odin.js -c -o dist/odin.min.js",
     "docs": "typedoc src/index.ts --json docs/api.json --excludeExternals --excludePrivate",
     "lint": "eslint . --ext .ts"
   },
@@ -32,23 +32,24 @@
     "node": ">=12"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^22.0.0",
-    "@rollup/plugin-node-resolve": "^13.3.0",
-    "@typescript-eslint/eslint-plugin": "^5.30.0",
-    "@typescript-eslint/parser": "^5.30.0",
-    "eslint": "^8.18.0",
-    "eslint-config-semistandard": "^16.0.0",
+    "@rollup/plugin-commonjs": "^23.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "eslint-config-semistandard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^6.0.0",
-    "rollup": "^2.75.0",
-    "terser": "^5.14.0",
-    "ts-node": "^10.8.0",
+    "eslint-plugin-promise": "^6.1.0",
+    "rollup": "^3.5.0",
+    "terser": "^5.16.0",
+    "ts-node": "^10.9.0",
     "typedoc": "^0.23.0",
-    "typescript": "^4.7.0"
+    "typescript": "^4.9.0"
   },
   "dependencies": {
     "bowser": "^2.11.0",
-    "msgpackr": "^1.6.0"
+    "msgpackr": "^1.8.0"
   }
 }

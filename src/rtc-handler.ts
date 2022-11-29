@@ -52,7 +52,7 @@ export class RtcHandler {
         worker.postMessage(
           {
             type: 'packet',
-            bytes: bytes,
+            bytes,
           },
           [bytes.buffer]
         );

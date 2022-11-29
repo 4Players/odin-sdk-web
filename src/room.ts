@@ -333,7 +333,7 @@ export class OdinRoom {
    * @param targetPeerIds Optional list of target peer IDs
    */
   async sendMessage(message: Uint8Array, targetPeerIds?: number[]) {
-    const params: IMessageData = { message: message };
+    const params: IMessageData = { message };
     if (targetPeerIds) {
       params.target_peer_ids = targetPeerIds;
     }
@@ -403,14 +403,14 @@ export class OdinRoom {
         for (const remotePeer of roomUpdate.room.peers) {
           const peer = this.addRemotePeer(remotePeer.id, remotePeer.user_id, remotePeer.medias, remotePeer.user_data);
           this.eventTarget.dispatchEvent(
-            new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerJoined', { room: this, peer: peer })
+            new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerJoined', { room: this, peer })
           );
           peer.medias.forEach((media) => {
             peer.eventTarget.dispatchEvent(
-              new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer: peer, media })
+              new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer, media })
             );
             this.eventTarget.dispatchEvent(
-              new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer: peer, media })
+              new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer, media })
             );
           });
         }
