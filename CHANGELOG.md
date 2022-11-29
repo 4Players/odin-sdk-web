@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0
+
+- Added `OdinRoom.disableVolumeGate`
+- Added `OdinRoom.enableVolumeGate`
+- Added `OdinRoom.updateVolumeGateThresholds` to allow configuring root mean square power (dBFS) when the volume gate should engage.
+- Added `OdinRoom.updateVADThresholds` to allow configuring voice probability value when the VAD should engage.
+- Renamed `OdinRoom.enablesVAD` to `OdinRoom.enableVAD`.
+
 ## 0.9.4
 
 - Fixed a bug where the client could become unresponsive on failed connection attempts.

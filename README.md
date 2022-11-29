@@ -6,7 +6,7 @@
 
 4Players ODIN is a cross-platform software development kit (SDK) that enables developers to integrate real-time chat technology into multiplayer games, apps and websites.
 
-[Online Documentation](https://developers.4players.io/odin)
+[Online Documentation](https://www.4players.io/developers/)
 
 **:warning: Important Notice:**
 
