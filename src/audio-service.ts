@@ -25,6 +25,11 @@ export class AudioService {
   private _bowser!: Bowser.Parser.Parser;
   private _audioSettings: IOdinAudioSettings = {
     voiceActivityDetection: true,
+    voiceActivityDetectionAttackProbability: 0.9,
+    voiceActivityDetectionReleaseProbability: 0.8,
+    volumeGate: true,
+    volumeGateAttackLoudness: -30,
+    volumeGateReleaseLoudness: -40,
   };
 
   private constructor(
@@ -213,13 +218,7 @@ export class AudioService {
    * @param audioSettings
    */
   async startRecording(ms: MediaStream, audioSettings?: IOdinAudioSettings): Promise<void> {
-    if (typeof audioSettings?.voiceActivityDetection !== 'undefined') {
-      this._audioSettings.voiceActivityDetection = !!audioSettings.voiceActivityDetection;
-    }
-
-    if (!this._audioSettings.voiceActivityDetection) {
-      this.disableVAD();
-    }
+    this.setVoiceProcessingConfig(audioSettings ?? this._audioSettings);
 
     const audioTrack = ms.getAudioTracks()[0];
 
@@ -293,25 +292,51 @@ export class AudioService {
   }
 
   /**
-   * Enables RNN based voice activity detection.
+   * Updates settings for voice activity detection and volume gate.
+   *
+   * @param settings The new settings and thresholds.
    */
-  enablesVAD() {
+  setVoiceProcessingConfig(settings: IOdinAudioSettings) {
+    this._audioSettings = settings;
+
+    console.log({
+      type: 'update_vad_thresholds',
+      voice: settings.voiceActivityDetection
+        ? {
+            going_active: settings.voiceActivityDetectionAttackProbability,
+            going_inactive: settings.voiceActivityDetectionReleaseProbability,
+          }
+        : { going_active: 0, going_inactive: 0 },
+      rms_dbfs: settings.volumeGate
+        ? {
+            going_active: settings.volumeGateAttackLoudness,
+            going_inactive: settings.volumeGateReleaseLoudness,
+          }
+        : { going_active: 0, going_inactive: 0 },
+    });
+
     this._worker.postMessage({
       type: 'update_vad_thresholds',
-      voice: { going_active: 0.9, going_inactive: 0.8 },
-      rms_dbfs: { going_active: -30, going_inactive: -40 },
+      voice: settings.voiceActivityDetection
+        ? {
+            going_active: settings.voiceActivityDetectionAttackProbability,
+            going_inactive: settings.voiceActivityDetectionReleaseProbability,
+          }
+        : { going_active: 0, going_inactive: 0 },
+      rms_dbfs: settings.volumeGate
+        ? {
+            going_active: settings.volumeGateAttackLoudness,
+            going_inactive: settings.volumeGateReleaseLoudness,
+          }
+        : { going_active: 0, going_inactive: 0 },
     });
   }
 
   /**
-   * Disables RNN based voice activity detection.
+   * Returns settings for voice activity detection and volume gate.
    */
-  disableVAD() {
-    this._worker.postMessage({
-      type: 'update_vad_thresholds',
-      voice: { going_active: 0, going_inactive: 0 },
-      rms_dbfs: { going_active: 0, going_inactive: 0 },
-    });
+  getVoiceProcessingConfig(): IOdinAudioSettings {
+    return this._audioSettings;
   }
 
   /**

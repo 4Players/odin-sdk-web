@@ -9,7 +9,27 @@ export interface IOdinAudioSettings {
   /**
    * Enable or disable RNN-based voice activity detection.
    */
-  voiceActivityDetection?: boolean;
+  voiceActivityDetection: boolean;
+  /**
+   * Voice probability value when the VAD should engage
+   */
+  voiceActivityDetectionAttackProbability: number;
+  /**
+   * Voice probability value when the VAD should disengage
+   */
+  voiceActivityDetectionReleaseProbability: number;
+  /**
+   * Enables or disables the input volume gate
+   */
+  volumeGate: boolean;
+  /**
+   * Root mean square power (dBFS) when the volume gate should engage
+   */
+  volumeGateAttackLoudness: number;
+  /**
+   * Root mean square power (dBFS) when the volume gate should disengage
+   */
+  volumeGateReleaseLoudness: number;
 }
 
 /**

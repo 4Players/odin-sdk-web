@@ -578,14 +578,81 @@ export class OdinRoom {
    * Disables RNN-based voice activity detection.
    */
   disableVAD() {
-    this._audioService.disableVAD();
+    const config = this._audioService.getVoiceProcessingConfig();
+
+    config.voiceActivityDetection = false;
+
+    this._audioService.setVoiceProcessingConfig(config);
   }
 
   /**
    * Enables RNN-based voice activity detection.
    */
   enableVAD() {
-    this._audioService.enablesVAD();
+    const config = this._audioService.getVoiceProcessingConfig();
+
+    config.voiceActivityDetection = true;
+
+    this._audioService.setVoiceProcessingConfig(config);
+  }
+
+  /**
+   * Updates thresholds for vice activity detection (between 0 and 1).
+   *
+   * @param attackProbability  Voice probability value when the VAD should engage
+   * @param releaseProbability Voice probability value when the VAD should disengage
+   */
+  updateVADThresholds(attackProbability: number, releaseProbability?: number) {
+    const config = this._audioService.getVoiceProcessingConfig();
+
+    config.voiceActivityDetectionAttackProbability = attackProbability;
+    config.voiceActivityDetectionReleaseProbability = releaseProbability ?? attackProbability - 0.1;
+
+    this._audioService.setVoiceProcessingConfig(config);
+  }
+
+  /**
+   * Disables RNN-based voice activity detection.
+   */
+  disableVolumeGate() {
+    const config = this._audioService.getVoiceProcessingConfig();
+
+    config.volumeGate = false;
+
+    this._audioService.setVoiceProcessingConfig(config);
+  }
+
+  /**
+   * Enables RNN-based voice activity detection.
+   */
+  enableVolumeGate() {
+    const config = this._audioService.getVoiceProcessingConfig();
+
+    config.volumeGate = true;
+
+    this._audioService.setVoiceProcessingConfig(config);
+  }
+
+  /**
+   * Updates thresholds for the input volume gate (between -90 and 0).
+   *
+   * @param attackLoudness  Root mean square power (dBFS) when the volume gate should engage
+   * @param releaseLoudness Root mean square power (dBFS) when the volume gate should disengage
+   */
+  updateVolumeGateThresholds(attackLoudness: number, releaseLoudness?: number) {
+    const config = this._audioService.getVoiceProcessingConfig();
+
+    config.volumeGateAttackLoudness = attackLoudness;
+    config.volumeGateReleaseLoudness = releaseLoudness ?? attackLoudness - 10;
+
+    this._audioService.setVoiceProcessingConfig(config);
+  }
+
+  /**
+   * Returns the current voice processing config for VAD and volume gate.
+   */
+  getAudioSettings(): IOdinAudioSettings {
+    return this._audioService.getVoiceProcessingConfig();
   }
 
   /**
