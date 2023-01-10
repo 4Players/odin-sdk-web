@@ -441,6 +441,15 @@ export class OdinRoom {
           this.eventTarget.dispatchEvent(
             new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerJoined', { room: this, peer })
           );
+
+          peer.medias.forEach((media) => {
+            peer.eventTarget.dispatchEvent(
+              new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer, media })
+            );
+            this.eventTarget.dispatchEvent(
+              new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer, media })
+            );
+          });
         }
         break;
       }
@@ -448,12 +457,7 @@ export class OdinRoom {
         if (!roomUpdate.peer_id) {
           throw Error(`The room update of kind ${roomUpdate.kind} is missing fields.`);
         }
-        const peer = await this.removePeer(roomUpdate.peer_id);
-        if (peer) {
-          this.eventTarget.dispatchEvent(
-            new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerLeft', { room: this, peer })
-          );
-        }
+        await this.removePeer(roomUpdate.peer_id);
         break;
       }
     }
@@ -560,15 +564,25 @@ export class OdinRoom {
     if (peerId === this._ownPeer.id) {
       return;
     }
+
     const peer = this._remotePeers.get(peerId);
     if (!peer) {
       return;
     }
 
     for (const media of peer.medias.entries()) {
+      peer.eventTarget.dispatchEvent(
+        new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStopped', { room: this, peer, media: media[1] })
+      );
+      this.eventTarget.dispatchEvent(
+        new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStopped', { room: this, peer, media: media[1] })
+      );
+
       await media[1].stop();
       peer.medias.delete(media[1].id);
     }
+
+    this.eventTarget.dispatchEvent(new OdinEvent<IOdinPeerJoinedLeftEventPayload>('PeerLeft', { room: this, peer }));
 
     this._remotePeers.delete(peerId);
     return peer;
