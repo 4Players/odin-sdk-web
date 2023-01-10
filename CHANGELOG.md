@@ -1,9 +1,14 @@
 # Changelog
 
+## 0.11.0
+
+- Fixed a bug where `MediaStarted` events weren't emitted, when using `OdinRoom.setPosition()`.
+- Added `MediaStopped` events for convenience when using `OdinRoom.setPosition()`.
+
 ## 0.10.0
 
-- Added `OdinRoom.disableVolumeGate`
-- Added `OdinRoom.enableVolumeGate`
+- Added `OdinRoom.disableVolumeGate`.
+- Added `OdinRoom.enableVolumeGate`.
 - Added `OdinRoom.updateVolumeGateThresholds` to allow configuring root mean square power (dBFS) when the volume gate should engage.
 - Added `OdinRoom.updateVADThresholds` to allow configuring voice probability value when the VAD should engage.
 - Renamed `OdinRoom.enablesVAD` to `OdinRoom.enableVAD`.
