@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0
+
+- Added RTT hints to voice packets for compatibility with native clients using version 1.3.1 or later.
+
 ## 0.11.0
 
 - Fixed a bug where `MediaStarted` events weren't emitted, when using `OdinRoom.setPosition()`.
