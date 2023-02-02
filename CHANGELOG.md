@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0
+
+- Refactored internal jitter buffer for better handling of high latency scenarios.
+- Added QoS metrics to voice packets to allow debugging of performance issues.
+- Reduced overall latency.
+
 ## 0.12.0
 
 - Added RTT hints to voice packets for compatibility with native clients using version 1.3.1 or later.
