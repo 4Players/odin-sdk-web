@@ -1,3 +1,4 @@
+/* eyvor [Revision: 5b91ea186d961920633fa52200b363cf37ecad57] */
 class Decoder extends AudioWorkletProcessor {
     constructor(...args) {
         super(...args);
