@@ -8,10 +8,6 @@
 
 [Online Documentation](https://www.4players.io/developers/)
 
-**:warning: Important Notice:**
-
-> Please note that ODIN is currently in **Beta** and features are being added over time.
-
 ## TypeScript Example
 
 ```typescript
