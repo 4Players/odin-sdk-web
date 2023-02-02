@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.1
+
+- Removed a debug log.
+
 ## 0.13.0
 
 - Refactored internal jitter buffer for better handling of high latency scenarios.
