@@ -299,22 +299,6 @@ export class AudioService {
   setVoiceProcessingConfig(settings: IOdinAudioSettings) {
     this._audioSettings = settings;
 
-    console.log({
-      type: 'update_vad_thresholds',
-      voice: settings.voiceActivityDetection
-        ? {
-            going_active: settings.voiceActivityDetectionAttackProbability,
-            going_inactive: settings.voiceActivityDetectionReleaseProbability,
-          }
-        : { going_active: 0, going_inactive: 0 },
-      rms_dbfs: settings.volumeGate
-        ? {
-            going_active: settings.volumeGateAttackLoudness,
-            going_inactive: settings.volumeGateReleaseLoudness,
-          }
-        : { going_active: 0, going_inactive: 0 },
-    });
-
     this._worker.postMessage({
       type: 'update_vad_thresholds',
       voice: settings.voiceActivityDetection
