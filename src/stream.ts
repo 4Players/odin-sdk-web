@@ -1,8 +1,7 @@
 import { pack, unpack } from 'msgpackr';
 import { OdinEventMethods } from './types';
-import { EventHandlers, EVENT_SCHEMAS, EventSchemas } from './schema-validation/types';
+import { EventHandlers, EventSchemas } from './schema-validation/types';
 import { validate } from './schema-validation/schema';
-import { OdinRoom } from './room';
 
 export type StreamHandler = (method: OdinEventMethods, params: unknown) => void;
 
@@ -248,7 +247,12 @@ async function receiveRequest(stream: Stream, id: number | null, method: OdinEve
 /**
  * MessagePack response handling.
  */
-function receiveResponse<T extends EventSchemas>(stream: Stream, id: number, error: string | undefined, result: unknown) {
+function receiveResponse<T extends EventSchemas>(
+  stream: Stream,
+  id: number,
+  error: string | undefined,
+  result: unknown
+) {
   const request = stream.requests.get(id);
   if (request === undefined) {
     return;
