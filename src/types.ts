@@ -116,11 +116,15 @@ export interface IOdinAudioStats {
    */
   decoder: {
     avg_decode_time: number;
-    cache_length: number;
-    jitter: number;
-    packets_dropped: number;
-    packets_lost: number;
+    packets_seen: number;
+    packets_invalid: number;
+    packets_too_late: number;
+    packets_too_early: number;
+    packets_repeated: number;
     packets_processed: number;
+    packets_lost: number;
+    rewinds: number;
+    cache_length: number;
   };
   /**
    * Internal Opus encoder statistics.
