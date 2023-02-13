@@ -4,11 +4,29 @@
 [![npm](https://img.shields.io/npm/l/@4players/odin.svg)][license-url]
 [![npm](https://img.shields.io/npm/dm/@4players/odin.svg)][npm-badge-url]
 
-4Players ODIN is a cross-platform software development kit (SDK) that enables developers to integrate real-time chat technology into multiplayer games, apps and websites.
+ODIN is a cross-platform software development kit (SDK) that enables developers to integrate real-time voice chat technology into multiplayer games, apps and websites.
+
+This package is fully compatible with all of our other client SDKs, allowing you to effortlessly connect and communicate with any native app or game that has integrated ODIN. Whether using your favorite web browser or a native app, ODIN makes it easy for you to stay connected with those who matter most.
 
 [Online Documentation](https://www.4players.io/developers/)
 
-## TypeScript Example
+## Audio Processing Features
+
+ODIN enhances your audio experience during VoIP chats by offering a comprehensive set of filters beyond the basic audio processing features found in web browsers. These enhancements activated by default, ensuring clear and interruption-free communication.
+
+### Voice Activity Detection (VAD)
+
+When enabled, ODIN will analyze the audio input signal using smart voice detection algorithm to determine the presence of speech. You can define both the probability required to start and stop transmitting.
+
+### Input Volume Gate
+
+When enabled, the volume gate will measure the volume of the input audio signal, thus deciding when a user is speaking loud enough to transmit voice data. You can define both the root mean square power (dBFS) for when the gate should engage and disengage.
+
+## Quick Start
+
+Ready to take your app to the next level? Integrating ODIN is a simple and straightforward process. Here are two examples of how to get started with our SDK.
+
+### TypeScript Example
 
 ```typescript
 import { OdinClient } from '@4players/odin';
@@ -71,14 +89,14 @@ startOdin('__YOUR TOKEN__').then(() => {
 });
 ```
 
-## HTML/JavaScript Example
+### HTML/JavaScript Example
 
 ```html
 <html>
   <body>
     <script type="text/javascript" src="odin.min.js"></script>
     <script type="text/javascript">
-      let startOdin = async function (token: string) {
+      let startOdin = async function (token) {
         // Authenticate and initialize the room (notice the `ODIN` namespace which encapsulates the API)
         const odinRoom = await ODIN.OdinClient.initRoom(token);
 
