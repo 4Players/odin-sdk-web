@@ -1,6 +1,7 @@
 import { IOdinPeerEvents } from './types';
 import { AudioService } from './audio-service';
 import { OdinMedia } from './media';
+import { Stream } from './stream';
 
 /**
  * Class describing a single peer inside an `OdinRoom`.
@@ -10,7 +11,7 @@ export class OdinPeer {
   private _activeMedias: Map<number, OdinMedia> = new Map();
   private _data: Uint8Array = new Uint8Array();
   private _eventTarget: EventTarget = new EventTarget();
-  private _audioService!: AudioService;
+  private _audioService: AudioService | null;
 
   /**
    * Creates a new `OdinPeer` instance.
@@ -20,11 +21,8 @@ export class OdinPeer {
    * @param _remote Indicates, whether the peer is a remote peer or not
    * @ignore
    */
-  constructor(private _id: number, private _userId: string, private _remote: boolean) {
-    const audioService = AudioService.getInstance();
-    if (audioService) {
-      this._audioService = audioService;
-    }
+  constructor(private _roomStream: Stream, private _id: number, private _userId: string, private _remote: boolean) {
+    this._audioService = AudioService.getInstance();
   }
 
   /**
@@ -121,7 +119,7 @@ export class OdinPeer {
    */
   removeMedia(media: OdinMedia): void {
     media.stop();
-    this._audioService.unregisterMedia(media);
+    this._audioService?.unregisterMedia(media);
     this._activeMedias.delete(media.id);
   }
 
@@ -187,20 +185,23 @@ export class OdinPeer {
    *
    * @param message Byte array of arbitrary data to send
    */
-  sendMessage(message: Uint8Array): void {
+  async sendMessage(message: Uint8Array) {
     if (!message) return;
-    this._audioService.room.sendMessage(message, [this._id]);
+
+    await this._roomStream?.request('SendMessage', { message, target_peer_ids: [this._id] });
   }
 
   /**
    * Sends user data of the peer to the server.
    */
-  update(): void {
-    if (this.id !== this._audioService.room.ownPeer.id) {
+  async update() {
+    if (this._remote) {
       throw new Error('Failed to flush peer user data update; not allowed to update remote peer');
     }
 
-    this._audioService.room.flushOwnPeerDataUpdate();
+    await this._roomStream?.request('UpdatePeer', {
+      user_data: this._data,
+    });
   }
 
   /**

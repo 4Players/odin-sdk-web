@@ -18,12 +18,12 @@ import { workerScript } from './worker';
  */
 export class OdinClient {
   private static _eventTarget: EventTarget = new EventTarget();
-  private static _mainStream: Stream;
-  private static _rooms: OdinRoom[] = [];
-  private static _rtcHandler: RtcHandler;
-  private static _audioService: AudioService;
   private static _state: OdinConnectionState = 'disconnected';
-  private static _worker: Worker;
+  private static _rooms: OdinRoom[] = [];
+  private static _mainStream: Stream;
+  private static _rtcHandler?: RtcHandler;
+  private static _audioService?: AudioService;
+  private static _worker?: Worker;
 
   /**
    * @ignore
@@ -89,12 +89,19 @@ export class OdinClient {
       throw new Error('No gateway URL configured\n');
     }
 
-    if (!audioContext) audioContext = new AudioContext({ sampleRate: 48000 });
-    await audioContext.resume();
+    if (typeof AudioContext === 'undefined') {
+      console.warn('AudioContext is not available on this platform; disabling ODIN audio functionality');
+    } else if (typeof Worker === 'undefined') {
+      console.warn('Worker is not available on this platform; disabling ODIN audio functionality');
+    } else {
+      if (!audioContext) audioContext = new AudioContext({ sampleRate: 48000 });
+      await audioContext.resume();
 
-    this._worker = new Worker(workerScript);
-    this._rtcHandler = new RtcHandler(this._worker);
-    this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContext);
+      this._worker = new Worker(workerScript);
+      this._rtcHandler = new RtcHandler(this._worker);
+      this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContext);
+    }
+
     this.connectionState = 'connecting';
 
     try {
@@ -121,8 +128,8 @@ export class OdinClient {
         roomIds = mainStreamAuthResult.room_ids;
       }
 
-      await this._rtcHandler.startRtc(this._mainStream);
-      await this._audioService.setupAudio();
+      await this._rtcHandler?.startRtc(this._mainStream);
+      await this._audioService?.setupAudio();
 
       this._rooms = roomIds.map((roomId) => {
         return new OdinRoom(roomId, token, gatewayAuthResult.address, this._mainStream);
@@ -133,7 +140,7 @@ export class OdinClient {
        * This might change, once multiple rooms will get supported.
        */
       for (const room of this._rooms) {
-        room.addEventListener('Left', (leftEvent) => {
+        room.addEventListener('Left', (_) => {
           this.disconnect();
         });
       }
@@ -183,7 +190,7 @@ export class OdinClient {
    *
    * @private
    */
-  private static mainHandler(method: string, params: unknown): void {}
+  private static mainHandler(_method: string, _params: unknown): void {}
 
   /**
    * Authenticates against the gateway and returns its result.
@@ -227,18 +234,10 @@ export class OdinClient {
       }
     });
 
-    if (this._audioService) {
-      this._audioService.stopAllAudio();
-    }
-    if (this._mainStream) {
-      this._mainStream.close();
-    }
-    if (this._worker) {
-      this._worker.terminate();
-    }
-    if (this._rtcHandler) {
-      this._rtcHandler.stopRtc();
-    }
+    this._audioService?.stopAllAudio();
+    this._mainStream?.close();
+    this._worker?.terminate();
+    this._rtcHandler?.stopRtc();
 
     this._rooms = [];
   }

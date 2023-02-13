@@ -205,14 +205,16 @@ export class OdinRoom {
   }
 
   /**
-   * Changes the active capture stream.
+   * Changes the active capture stream (e.g. when switching to another input device).
+   *
+   * @param mediaStream The capture stream of the input device.
    */
-  async changeMediaStream(ms: MediaStream) {
+  async changeMediaStream(mediaStream: MediaStream) {
     if (this.connectionState !== 'connected') {
       throw new Error('Unable to change media stream; room is not connected\n');
     }
     try {
-      await this._audioService.changeMediaStream(ms);
+      await this._audioService.updateInputStream(mediaStream);
     } catch (e) {
       throw new Error('Could not change MediaStream\n' + e);
     }
@@ -221,18 +223,22 @@ export class OdinRoom {
   /**
    * Creates a new local media using the specified stream.
    *
-   * @param ms The capture stream of the input device.
+   * @param mediaStream The capture stream of the input device.
    * @param audioSettings Optional audio settings like VAD or master volume used to initialize audio.
    * @returns A Promise of the newly created OdinMedia.
    */
-  async createMedia(ms: MediaStream, audioSettings?: IOdinAudioSettings): Promise<OdinMedia> {
+  async createMedia(mediaStream: MediaStream, audioSettings?: IOdinAudioSettings): Promise<OdinMedia> {
     if (this.connectionState !== 'connected') {
       throw new Error('Unable to create new media; room is not connected\n');
     } else if (!this._ownPeer) {
       throw new Error('Unable to create new media; own peer information is not available\n');
     }
 
-    await this._audioService.startRecording(ms, audioSettings);
+    if (audioSettings) {
+      this._audioService.setVoiceProcessingConfig(audioSettings);
+    }
+
+    await this._audioService.updateInputStream(mediaStream);
 
     const newMedia = this._ownPeer.createMedia();
     this._ownPeer.eventTarget.dispatchEvent(
@@ -398,7 +404,7 @@ export class OdinRoom {
         }
         this._data = roomUpdate.room.user_data;
         this._customer = roomUpdate.room.customer;
-        this._ownPeer = new OdinPeer(roomUpdate.own_peer_id, parseJwt(this._token).uid ?? '', false);
+        this._ownPeer = new OdinPeer(this._roomStream, roomUpdate.own_peer_id, parseJwt(this._token).uid ?? '', false);
         this._ownPeer.setFreeMediaIds(roomUpdate.media_ids);
         for (const remotePeer of roomUpdate.room.peers) {
           const peer = this.addRemotePeer(remotePeer.id, remotePeer.user_id, remotePeer.medias, remotePeer.user_data);
@@ -545,7 +551,7 @@ export class OdinRoom {
     if (peerId === this._ownPeer.id) {
       throw new Error('Can not add the remote peer with this method\n');
     }
-    const peer = new OdinPeer(peerId, userId, true);
+    const peer = new OdinPeer(this._roomStream, peerId, userId, true);
     peer.data = data;
     medias.forEach((media) => {
       const mediaInstance = new OdinMedia(media.id, peerId, true);

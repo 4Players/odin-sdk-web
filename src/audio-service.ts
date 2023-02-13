@@ -214,13 +214,11 @@ export class AudioService {
    * Starts to record the audio input and in the case of having a Blink based browser, also takes care about
    * echo cancellation.
    *
-   * @param ms
+   * @param mediaStream
    * @param audioSettings
    */
-  async startRecording(ms: MediaStream, audioSettings?: IOdinAudioSettings): Promise<void> {
-    this.setVoiceProcessingConfig(audioSettings ?? this._audioSettings);
-
-    const audioTrack = ms.getAudioTracks()[0];
+  async updateInputStream(mediaStream: MediaStream): Promise<void> {
+    const audioTrack = mediaStream.getAudioTracks()[0];
 
     // Apply ugly workaround to apply echo cancellation in Chromium based browsers
     if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
@@ -236,57 +234,19 @@ export class AudioService {
       this.webrtcDummy(inputStream);
       this.webrtcDummy(outputStream);
 
+      this._audioSource?.disconnect();
       this._audioSource = this._audioContext.createMediaStreamSource(inputStream);
       this._audioSource.connect(this._encoderNode);
 
+      this._audioElement?.remove();
       this._audioElement = new Audio();
       this._audioElement.srcObject = outputStream;
       this._audioElement.volume = 1;
+
       await this._audioElement.play();
     } else {
-      this._audioSource = this._audioContext.createMediaStreamSource(ms);
-      this._audioSource.connect(this._encoderNode);
-    }
-  }
-
-  /**
-   * Update the underlying microphone capture stream.
-   *
-   * @param ms The new media stream
-   */
-  async changeMediaStream(ms: MediaStream) {
-    if (!this._decoderNode || !this._encoderNode) {
-      throw new Error('Failed to change media stream; audio service is not initialized');
-    }
-
-    const audioTrack = ms.getAudioTracks()[0];
-
-    // Apply ugly workaround to apply echo cancellation in Chromium based browsers
-    if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
-      const outputDestination = this._audioContext.createMediaStreamDestination();
-      const webrtc = await this.webrtcLoopback(audioTrack, outputDestination.stream.getAudioTracks()[0]);
-
-      const inputStream = new MediaStream([webrtc.input]);
-      const outputStream = new MediaStream([webrtc.output]);
-
-      this.webrtcDummy(inputStream);
-      this.webrtcDummy(outputStream);
-
       this._audioSource?.disconnect();
-      this._audioSource = this._audioContext.createMediaStreamSource(inputStream);
-      this._audioSource.connect(this._encoderNode);
-
-      if (this._audioElement) {
-        this._audioElement.remove();
-        this._audioElement = new Audio();
-        this._audioElement.srcObject = outputStream;
-        this._audioElement.volume = 1;
-
-        await this._audioElement.play();
-      }
-    } else {
-      this._audioSource?.disconnect();
-      this._audioSource = this._audioContext.createMediaStreamSource(ms);
+      this._audioSource = this._audioContext.createMediaStreamSource(mediaStream);
       this._audioSource?.connect(this._encoderNode);
     }
   }

@@ -6,7 +6,7 @@ import { AudioService } from './audio-service';
  */
 export class OdinMedia {
   private _eventTarget: EventTarget = new EventTarget();
-  private _audioService!: AudioService;
+  private _audioService: AudioService | null;
   private _active = false;
   private _volume = 1;
 
@@ -20,10 +20,7 @@ export class OdinMedia {
    * @ignore
    */
   constructor(private _id: number, private _peerId: number, private _remote: boolean) {
-    const audioService = AudioService.getInstance();
-    if (audioService) {
-      this._audioService = audioService;
-    }
+    this._audioService = AudioService.getInstance();
   }
 
   /**
@@ -65,7 +62,7 @@ export class OdinMedia {
    * Indicates whether or not the media is registered in the audio service instance (e.g. started).
    */
   get started(): boolean {
-    return this._audioService.hasMedia(this._id);
+    return this._audioService?.hasMedia(this._id) ?? false;
   }
 
   /**
@@ -91,6 +88,10 @@ export class OdinMedia {
    */
   async start(): Promise<void> {
     if (this.started) return;
+
+    if (!this._audioService) {
+      throw new Error('Unable to start media; AudioService is not available');
+    }
 
     if (this._remote) {
       this._audioService.audioWorker.postMessage({
@@ -122,6 +123,10 @@ export class OdinMedia {
   async stop(): Promise<void> {
     if (!this.started) return;
 
+    if (!this._audioService) {
+      throw new Error('Unable to stop media; AudioService is not available');
+    }
+
     if (this._remote) {
       this._audioService.audioWorker.postMessage({
         type: 'stop_decoder',
@@ -145,6 +150,10 @@ export class OdinMedia {
    * @param volume The new volume (Default is 1)
    */
   changeVolume(volume: number): void {
+    if (!this._audioService) {
+      throw new Error('Unable to change media volume; AudioService is not available');
+    }
+
     this._audioService.audioWorker.postMessage({
       type: 'set_volume',
       media_id: this._id,
