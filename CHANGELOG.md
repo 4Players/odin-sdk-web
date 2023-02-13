@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.0
+
+- Added CommonJS builds for Node.js environments.
+- Updated client to automatically disable audio functionality when neither `AudioContext` nor `Worker` are available.
+
 ## 0.13.1
 
 - Removed a debug log.

@@ -2,12 +2,13 @@
   "name": "odin-typescript-example",
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
+    "dev": "vite --force",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
-    "@4players/odin": "^0.13.0",
+    "@4players/odin": "^0.14.0",
     "@4players/odin-tokens": "^1.3.0",
     "typescript": "^4.9.0",
     "vite": "^4.1.0"

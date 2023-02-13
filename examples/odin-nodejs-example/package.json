@@ -1,0 +1,13 @@
+{
+  "name": "odin-nodejs-example",
+  "version": "0.0.0",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node ."
+  },
+  "devDependencies": {
+    "@4players/odin": "^0.14.0",
+    "@4players/odin-tokens": "^1.3.0",
+    "ws": "^8.12.0"
+  }
+}
