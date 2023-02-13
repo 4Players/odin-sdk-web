@@ -17,7 +17,7 @@ import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
 import { makeHandler, Stream } from './stream';
 import { openStream, parseJwt } from './utils';
-import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './schema-validation/types';
+import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './schema-types';
 
 /**
  * Class describing an `OdinRoom`.

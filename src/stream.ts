@@ -1,7 +1,7 @@
 import { pack, unpack } from 'msgpackr';
 import { OdinEventMethods } from './types';
-import { EventHandlers, EventSchemas } from './schema-validation/types';
-import { validate } from './schema-validation/schema';
+import { EventHandlers, EventSchemas } from './schema-types';
+import { validate } from './schema-validation';
 
 export type StreamHandler = (method: OdinEventMethods, params: unknown) => void;
 
