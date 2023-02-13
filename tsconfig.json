@@ -1,13 +1,13 @@
 {
     "compilerOptions": {
-        "target": "esnext",
+        "target": "es2015",
         "moduleResolution": "node",
         "strict": true,
+        "preserveConstEnums": true,
         "experimentalDecorators": true,
         "noImplicitReturns": true,
         "declaration": true,
         "declarationDir": "./lib",
-        "outDir": "./lib",
         "allowJs": true,
         "allowSyntheticDefaultImports": true,
         "lib": [
