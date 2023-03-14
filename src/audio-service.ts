@@ -23,6 +23,7 @@ export class AudioService {
   private _medias: OdinMedia[] = [];
   private _room!: OdinRoom;
   private _bowser!: Bowser.Parser.Parser;
+  private _artificialPacketLoss: number = 0;
   private _audioSettings: IOdinAudioSettings = {
     voiceActivityDetection: true,
     voiceActivityDetectionAttackProbability: 0.9,
@@ -43,7 +44,11 @@ export class AudioService {
       switch (event.data.type) {
         case 'packet':
           if (this._audioDataChannel.readyState === 'open') {
-            this._audioDataChannel.send(event.data.bytes);
+            if (this._artificialPacketLoss > 0 && Math.random() * 100 < this._artificialPacketLoss) {
+              console.warn(`Dropping packet due to artificial packet loss percentage: ${this._artificialPacketLoss}%`);
+            } else {
+              this._audioDataChannel.send(event.data.bytes);
+            }
           }
           break;
         case 'stats':
@@ -116,6 +121,24 @@ export class AudioService {
    */
   set room(room: OdinRoom) {
     this._room = room;
+  }
+
+  /**
+   * Returns the artificial packet loss for outgoing media packets.
+   */
+  get artificialPacketLossPercentage(): number {
+    return this._artificialPacketLoss;
+  }
+
+  /**
+   * Sets the artificial packet loss for outgoing media packets.
+   *
+   * @param room Packet loss in percent (0-100)
+   */
+  set artificialPacketLossPercentage(value: number) {
+    if (value >= 0 && value <= 100) {
+      this._artificialPacketLoss = value;
+    }
   }
 
   /**
@@ -260,19 +283,17 @@ export class AudioService {
     this._audioSettings = settings;
 
     this._worker.postMessage({
-      type: 'update_vad_thresholds',
-      voice: settings.voiceActivityDetection
-        ? {
-            going_active: settings.voiceActivityDetectionAttackProbability,
-            going_inactive: settings.voiceActivityDetectionReleaseProbability,
-          }
-        : { going_active: 0, going_inactive: 0 },
-      rms_dbfs: settings.volumeGate
-        ? {
-            going_active: settings.volumeGateAttackLoudness,
-            going_inactive: settings.volumeGateReleaseLoudness,
-          }
-        : { going_active: 0, going_inactive: 0 },
+      type: 'set_speech_detection_config',
+      enabled: settings.voiceActivityDetection,
+      going_active_threshold: settings.voiceActivityDetectionAttackProbability,
+      going_inactive_threshold: settings.voiceActivityDetectionReleaseProbability,
+    });
+
+    this._worker.postMessage({
+      type: 'set_volume_gate_config',
+      enabled: settings.volumeGate,
+      going_active_threshold: settings.volumeGateAttackLoudness,
+      going_inactive_threshold: settings.volumeGateReleaseLoudness,
     });
   }
 
