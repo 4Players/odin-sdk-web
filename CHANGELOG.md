@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0
+
+- Updated QoS metrics for compatibility with native clients using version 1.4.0 or later.
+
 ## 0.14.0
 
 - Added CommonJS builds for Node.js environments.
