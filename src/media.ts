@@ -155,7 +155,7 @@ export class OdinMedia {
     }
 
     this._audioService.audioWorker.postMessage({
-      type: 'set_volume',
+      type: 'set_playback_volume',
       media_id: this._id,
       value: volume,
     });

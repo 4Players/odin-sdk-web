@@ -131,10 +131,10 @@ export interface IOdinAudioStats {
    */
   encoder: {
     avg_encode_time: number;
-    cbr: boolean;
     complexity: number;
+    complexity_factor: number;
+    fec_packet_loss: number;
     fec: boolean;
-    packet_loss: number;
     voip: boolean;
   };
 }
