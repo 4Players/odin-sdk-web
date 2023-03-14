@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.1
+
+- Fixed a bug where speech detection settings were not applied in VAD processor.
+
 ## 0.15.0
 
 - Updated QoS metrics for compatibility with native clients using version 1.4.0 or later.
