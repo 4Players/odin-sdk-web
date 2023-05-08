@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.2
+
+- Updated WebAssembly to support legacy browsers.
+- Fixed a bug where `AudioContext` API was not found on some iOS devices.
+
 ## 0.15.1
 
 - Fixed a bug where speech detection settings were not applied in VAD processor.
