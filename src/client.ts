@@ -89,12 +89,17 @@ export class OdinClient {
       throw new Error('No gateway URL configured\n');
     }
 
-    if (typeof AudioContext === 'undefined') {
-      console.warn('AudioContext is not available on this platform; disabling ODIN audio functionality');
-    } else if (typeof Worker === 'undefined') {
-      console.warn('Worker is not available on this platform; disabling ODIN audio functionality');
-    } else {
-      if (!audioContext) audioContext = new AudioContext({ sampleRate: 48000 });
+    if (typeof audioContext === 'undefined') {
+      if (typeof AudioContext === 'undefined') {
+        console.warn('AudioContext is not available on this platform; disabling ODIN audio functionality');
+      } else if (typeof Worker === 'undefined') {
+        console.warn('Worker is not available on this platform; disabling ODIN audio functionality');
+      } else {
+        audioContext = new AudioContext({ sampleRate: 48000 });
+      }
+    }
+
+    if (audioContext) {
       await audioContext.resume();
 
       this._worker = new Worker(workerScript);
