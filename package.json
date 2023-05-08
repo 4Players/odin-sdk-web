@@ -1,6 +1,6 @@
 {
   "name": "@4players/odin",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "description": "A cross-platform SDK enabling developers to integrate real-time VoIP chat technology into their projects",
   "author": "Josho Bleicker <josho.bleicker@4players.io> (https://www.4players.io)",
   "homepage": "https://www.4players.io",
@@ -33,24 +33,24 @@
     "node": ">=12"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^24.0.0",
+    "@rollup/plugin-commonjs": "^24.1.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
-    "@rollup/plugin-typescript": "^11.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.55.0",
-    "@typescript-eslint/parser": "^5.55.0",
-    "eslint": "^8.36.0",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "eslint": "^8.40.0",
     "eslint-config-semistandard": "^17.0.0",
     "eslint-plugin-import": "^2.27.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.0",
-    "rollup": "^3.19.0",
-    "terser": "^5.16.0",
+    "rollup": "^3.21.0",
+    "terser": "^5.17.0",
     "ts-node": "^10.9.0",
-    "typedoc": "^0.23.0",
+    "typedoc": "^0.24.0",
     "typescript": "^4.9.0"
   },
   "dependencies": {
     "bowser": "^2.11.0",
-    "msgpackr": "^1.8.0"
+    "msgpackr": "^1.9.0"
   }
 }
