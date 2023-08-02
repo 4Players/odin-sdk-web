@@ -21,10 +21,6 @@ export async function openStream(url: string, handler: StreamHandler): Promise<S
   return stream;
 }
 
-export function toRaw<T extends JsonValue>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
-}
-
 /**
  * Parses a given JWT and returns its claims.
  *
