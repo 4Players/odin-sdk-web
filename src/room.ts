@@ -15,7 +15,7 @@ import {
 import { OdinAudioService } from './audio';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
-import { makeHandler, Stream } from './stream';
+import { makeHandler, OdinStream } from './stream';
 import { openStream, parseJwt } from './utils';
 import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './schema-types';
 
@@ -32,6 +32,11 @@ export class OdinRoom {
    * An instance of `EventTarget` for handling events related to this room.
    */
   private _eventTarget: EventTarget = new EventTarget();
+
+  /**
+   * The `OdinStream` instance representing the main connection for the room.
+   */
+  private _roomStream!: OdinStream;
 
   /**
    * The `OdinPeer` instance representing the current user within the room.
@@ -57,7 +62,6 @@ export class OdinRoom {
    * A Map storing all remote `OdinPeer` instances within the room, using the peer ID as the key.
    */
   private _remotePeers: Map<number, OdinPeer> = new Map();
-  private _roomStream!: Stream;
 
   /**
    * The customer identifier to which this room is assigned.
@@ -73,7 +77,7 @@ export class OdinRoom {
    * @param _mainStream The main stream connection this room is based on
    * @ignore
    */
-  constructor(private _id: string, private _token: string, private _address: string, private _mainStream: Stream) {
+  constructor(private _id: string, private _token: string, private _address: string, private _mainStream: OdinStream) {
     const audioService = OdinAudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
@@ -205,7 +209,7 @@ export class OdinRoom {
       if (!streamId) throw new Error('No Stream ID fetched\n');
 
       try {
-        this._roomStream = await openStream(`wss://${this._address}?${streamId}`, this.streamHandler.bind(this));
+        this._roomStream = await openStream(`wss://${this._address}/room?${streamId}`, this.streamHandler.bind(this));
         this._roomStream.onclose = () => {
           this.connectionState = 'disconnected';
           this.disconnect();

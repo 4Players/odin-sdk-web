@@ -1,7 +1,7 @@
 import { IOdinPeerEvents } from './types';
 import { OdinAudioService } from './audio';
 import { OdinMedia } from './media';
-import { Stream } from './stream';
+import { OdinStream } from './stream';
 
 /**
  * Class describing a single peer inside an `OdinRoom`.
@@ -40,7 +40,7 @@ export class OdinPeer {
    * @param _remote Indicates, whether the peer is a remote peer or not
    * @ignore
    */
-  constructor(private _roomStream: Stream, private _id: number, private _userId: string, private _remote: boolean) {
+  constructor(private _roomStream: OdinStream, private _id: number, private _userId: string, private _remote: boolean) {
     this._audioService = OdinAudioService.getInstance();
   }
 

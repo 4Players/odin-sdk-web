@@ -1,8 +1,5 @@
-import { StreamHandler, Stream } from './stream';
-import { JsonValue } from './types';
+import { OdinStreamHandler, OdinStream } from './stream';
 
-export async function openStream(url: string, handler: StreamHandler): Promise<Stream> {
-  const stream = new Stream(url, handler);
 /**
  * Opens a new ODIN main/room stream and registers events handlers.
  *
@@ -10,6 +7,8 @@ export async function openStream(url: string, handler: StreamHandler): Promise<S
  * @param handler The handler for ODIN events
  * @returns       The new steam
  */
+export async function openStream(url: string, handler: OdinStreamHandler): Promise<OdinStream> {
+  const stream = new OdinStream(url, handler);
   try {
     await new Promise((resolve, reject) => {
       stream.addEventListener('open', resolve, { once: true });

@@ -2,13 +2,13 @@ import {
   IAuthResult,
   IOdinClientSettings,
   IOdinClientEvents,
+  IOdinConnectionStateChangedEventPayload,
   OdinConnectionState,
   OdinEvent,
-  IOdinConnectionStateChangedEventPayload,
 } from './types';
-import { RtcHandler } from './rtc-handler';
-import { Stream } from './stream';
 import { OdinAudioService } from './audio';
+import { OdinRtcHandler } from './rtc-handler';
+import { OdinStream } from './stream';
 import { OdinRoom } from './room';
 import { openStream } from './utils';
 import { workerScript } from './worker';
@@ -22,6 +22,16 @@ export class OdinClient {
    */
   private static _audioService?: OdinAudioService;
 
+  /**
+   * RTCPeerConnection handler for handling WebRTC operations.
+   */
+  private static _rtcHandler?: OdinRtcHandler;
+
+
+  /**
+   * Main WebSocket stream to interact with the ODIN server.
+   */
+  private static _mainStream: OdinStream;
 
   /**
    * EventTarget instance to listen for and dispatch custom events.
@@ -37,8 +47,6 @@ export class OdinClient {
    * Array holding the currently available `OdinRoom` instances.
    */
   private static _rooms: OdinRoom[] = [];
-  private static _mainStream: Stream;
-  private static _rtcHandler?: RtcHandler;
   private static _worker?: Worker;
 
   /**
@@ -122,8 +130,16 @@ export class OdinClient {
       await audioContexts.input.resume();
       await audioContexts.output.resume();
 
+      const rtc = new RTCPeerConnection();
+      rtc.onconnectionstatechange = () => {
+        if (rtc.connectionState === 'failed') {
+          console.error('Failed to establish RTC peer connection; ODIN audio functionality is disrupted');
+          this.connectionState = 'incomplete';
+        }
+      };
+
       this._worker = new Worker(workerScript);
-      this._rtcHandler = new RtcHandler(this._worker);
+      this._rtcHandler = new OdinRtcHandler(this._worker, rtc);
       this._audioService = OdinAudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContexts);
     }
 
@@ -131,7 +147,7 @@ export class OdinClient {
 
     try {
       const gatewayAuthResult = await this.authGateway(token, gateway ?? this.config.gatewayUrl);
-      this._mainStream = await openStream(`wss://${gatewayAuthResult.address}`, this.mainHandler);
+      this._mainStream = await openStream(`wss://${gatewayAuthResult.address}/main`, this.mainHandler);
 
       this._mainStream.onclose = () => {
         this.connectionState = 'disconnected';
@@ -143,14 +159,20 @@ export class OdinClient {
         this.disconnect();
       };
 
-      // let mainStreamAuthResult: {room_ids: string[]} | undefined;
-      const mainStreamAuthResult = (await this._mainStream.request('Authenticate', {
-        token: gatewayAuthResult.token,
-      })) as { room_ids: string[] };
-
       let roomIds: string[] = [];
-      if (mainStreamAuthResult && mainStreamAuthResult.room_ids) {
-        roomIds = mainStreamAuthResult.room_ids;
+      try {
+        const mainStreamAuthResult = (await this._mainStream.request('Authenticate', {
+          token: gatewayAuthResult.token,
+        })) as { room_ids: string[] };
+
+        if (mainStreamAuthResult && mainStreamAuthResult.room_ids) {
+          roomIds = mainStreamAuthResult.room_ids;
+        }
+      } catch (err) {
+        if ((err as any).message === 'unknown method') {
+          console.warn('Incompatible ODIN server version detected; please update your client');
+        }
+        throw err;
       }
 
       await this._rtcHandler?.startRtc(this._mainStream);

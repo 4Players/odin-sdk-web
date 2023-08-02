@@ -53,7 +53,7 @@ export type EventHandlers<T extends EventSchemas, I> = {
   [Method in keyof T]: EventHandler<T[Method], I>;
 };
 
-export type EventSchemaByMethod<Method extends keyof typeof EVENT_SCHEMAS> = Unwrap<typeof EVENT_SCHEMAS[Method]>;
+export type EventSchemaByMethod<Method extends keyof typeof EVENT_SCHEMAS> = Unwrap<(typeof EVENT_SCHEMAS)[Method]>;
 export type RoomUpdatedSchemaType = EventSchemaByMethod<'RoomUpdated'>['updates'][number];
 export type PeerUpdatedSchemaType = EventSchemaByMethod<'PeerUpdated'>;
 export type MessageReceivedSchemaType = EventSchemaByMethod<'MessageReceived'>;
@@ -66,8 +66,8 @@ const MEDIA = create({
     properties: {
       type: 'Object',
       fields: {
-        fec: {
-          type: 'Boolean',
+        kind: {
+          type: 'String',
           optional: true,
         },
       },
@@ -83,8 +83,8 @@ const MEDIAS = create({
     properties: {
       type: 'Object',
       fields: {
-        fec: {
-          type: 'Boolean',
+        kind: {
+          type: 'String',
           optional: true,
         },
       },
@@ -153,7 +153,7 @@ export const EVENT_SCHEMAS = {
       properties: {
         type: 'Object',
         fields: {
-          fec: { type: 'Boolean', optional: true },
+          kind: { type: 'String', optional: true },
         },
         optional: true,
       },

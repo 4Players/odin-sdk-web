@@ -3,7 +3,7 @@ import { OdinEventMethods } from './types';
 import { EventHandlers, EventSchemas } from './schema-types';
 import { validate } from './schema-validation';
 
-export type StreamHandler = (method: OdinEventMethods, params: unknown) => void;
+export type OdinStreamHandler = (method: OdinEventMethods, params: unknown) => void;
 
 export interface RequestResolve {
   method: string;
@@ -13,12 +13,12 @@ export interface RequestResolve {
   handler?: (method: string, params: unknown) => Promise<unknown>;
 }
 
-export class Stream {
+export class OdinStream {
   private _websocket: WebSocket | null;
   private _requests: Map<number, RequestResolve> = new Map();
   private nextId = 0;
 
-  constructor(private _url: string, private _handler: StreamHandler, private _timeout = 5000) {
+  constructor(private _url: string, private _handler: OdinStreamHandler, private _timeout = 5000) {
     this._websocket = new WebSocket(_url);
     this._websocket.binaryType = 'arraybuffer';
     this._websocket.addEventListener('close', () => {
@@ -47,7 +47,7 @@ export class Stream {
     return this._requests;
   }
 
-  get handler(): StreamHandler {
+  get handler(): OdinStreamHandler {
     return this._handler;
   }
 
@@ -127,7 +127,7 @@ export class Stream {
 /**
  * Packs and sends the request via the websocket. Requests getting cached until they are resolved.
  */
-async function send(stream: Stream, id: number | null, method: string, params: any): Promise<void | unknown> {
+async function send(stream: OdinStream, id: number | null, method: string, params: any): Promise<void | unknown> {
   if (stream.websocket === null) {
     throw new Error('stream closed');
   }
@@ -164,7 +164,7 @@ async function send(stream: Stream, id: number | null, method: string, params: a
  * @param {Stream} stream
  * @param {ArrayBuffer} bytes (event.data)
  **/
-async function receive(stream: Stream, bytes: any) {
+async function receive(stream: OdinStream, bytes: any) {
   const message = unpack(new Uint8Array(bytes));
   const valid = Array.isArray(message) && message.length > 0 && typeof message[0] === 'number';
   if (!valid) {
@@ -246,7 +246,7 @@ async function receiveRequest(stream: OdinStream, id: number | null, method: Odi
  * MessagePack response handling.
  */
 function receiveResponse<T extends EventSchemas>(
-  stream: Stream,
+  stream: OdinStream,
   id: number,
   error: string | undefined,
   result: unknown
