@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.16.0
+
+- Replaced `OdinRoom.getPosition` function with `OdinRoom.position` getter.
+- Updated Opus codec to version 1.4 and changed encoder settings to utilize new FEC options.
+- Updated Opus encoder bitrate to use 32000 kbps for voice signals and 96000 kbps for music signals.
+- Updated room to change state to use `incomplete` if RTC peer connection can't be established.
+- Fixed a bug where packet loss was always 0 in jitter stats.
+- Fixed error `TS2354` (This syntax requires an imported helper but module 'tslib' cannot be found).
+- Added a warning when trying to connect to incompatible server versions.
+- Added an input resampler for audio nodes, supporting sample rates beyond 48 kHz.
+
 ## 0.15.2
 
 - Updated WebAssembly to support legacy browsers.
