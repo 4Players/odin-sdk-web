@@ -1,7 +1,7 @@
 :root {
   --app-color-base: #333333;
   --app-color-muted: #b4b4b4;
-  --app-color-contrast: #f3f3f3;
+  --app-color-contrast: #e8f5fb;
   --app-color-primary: #004a6d;
   --app-color-accent: #e40e2062;
   --app-color-success: #4caf50;
@@ -10,6 +10,7 @@
 
   --app-padding: 10px;
   --app-input-height: 30px;
+  --app-border-radius: 5px;
 }
 
 #app {
@@ -33,6 +34,7 @@
   height: var(--app-input-height);
   margin-bottom: var(--app-padding);
   border: 1px solid var(--app-color-muted);
+  border-radius: var(--app-border-radius);
 }
 
 #login-form > input:focus {
@@ -48,11 +50,27 @@
   width: 80px;
   height: var(--app-input-height);
   padding: 0 var(--app-padding);
+  border: 1px solid var(--app-color-primary);
+  border-radius: var(--app-border-radius);
+  background: var(--app-color-contrast);
+  color: var(--app-color-primary);
+  font-weight: bold;
+  transition: all ease 0.2s;
+}
+
+#login-form > button:not(:disabled):hover {
+  background: var(--app-color-primary);
+  color: var(--app-color-contrast);
+}
+
+#login-form > button:disabled {
+  opacity: 0.5;
 }
 
 fieldset {
   margin-top: var(--app-padding);
   border: 1px solid var(--app-color-accent);
+  border-radius: var(--app-border-radius);
 }
 
 legend {
