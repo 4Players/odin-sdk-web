@@ -12,7 +12,8 @@ import { workletScript } from './worker';
 import Bowser from 'bowser';
 
 /**
- * Class to handle encoding/decoding and voice events like the talk status.
+ * Class responsible for handling audio encoding/decoding operations and emitting events related
+ * to voice activity status.
  */
 export class AudioService {
   private static _instance: AudioService;
@@ -23,7 +24,15 @@ export class AudioService {
   private _medias: OdinMedia[] = [];
   private _room!: OdinRoom;
   private _bowser!: Bowser.Parser.Parser;
+
+  /**
+   * Percent of outgoing media packets to artificially drop.
+   */
   private _artificialPacketLoss: number = 0;
+
+  /**
+   * Default settings for audio processing.
+   */
   private _audioSettings: IOdinAudioSettings = {
     voiceActivityDetection: true,
     voiceActivityDetectionAttackProbability: 0.9,
@@ -64,9 +73,10 @@ export class AudioService {
   }
 
   /**
-   * Returns the peer object matching the specified peer ID.
+   * Retrieves the `OdinPeer` instance that matches a specified media ID.
    *
-   * @param id The numeric id of the peer
+   * @param id The identifier of the peer's associated media
+   * @return   The peer object matching the specified media ID or `undefined` if none found
    */
   getPeerByMediaId(id: number): OdinPeer | undefined {
     if (this._room.ownPeer.medias.get(id)) return this._room.ownPeer;
@@ -144,17 +154,18 @@ export class AudioService {
   /**
    * Returns true if the audio service knows a media with the specified ID.
    *
-   * @param media The media ID to search for.
+   * @param media The media ID to search for
    */
   hasMedia(id: number): boolean {
     return !!this._medias.find((media) => media.id === id);
   }
 
   /**
-   * Updates the activity status of a media and emits the necessary events.
+   * Updates the activity status of a specific media. This method is responsible for setting the activity state of a media and
+   * triggering the necessary events when the media activity status changes.
    *
-   * @param id
-   * @param isActive
+   * @param id       The ID of the media whose activity status needs updating
+   * @param isActive The updated activity status of the media
    */
   updateMediaActivity(id: number, isActive: boolean) {
     const media = this._medias.find((media) => media.id === id);
@@ -230,23 +241,26 @@ export class AudioService {
     this._encoderNode.port.postMessage({ type: 'initialize', worker: encoderPipe.port2 }, [encoderPipe.port2]);
     this._decoderNode.port.postMessage({ type: 'initialize', worker: decoderPipe.port2 }, [decoderPipe.port2]);
 
-    this._decoderNode.connect(this._audioContext.destination);
+    this._decoderNode.connect(this._audioContexts.output.destination);
   }
 
   /**
-   * Starts to record the audio input and in the case of having a Blink based browser, also takes care about
-   * echo cancellation.
+   * Initiates the audio input recording. In case of using a Blink-based browser, it handles echo cancellation as well.
    *
-   * @param mediaStream
-   * @param audioSettings
+   * @param mediaStream   The media stream object that contains the audio track to be processed
+   * @param audioSettings Settings related to audio processing
    */
   async updateInputStream(mediaStream: MediaStream): Promise<void> {
+    if (!this._encoderNode || !this._decoderNode) {
+      return;
+    }
+
     const audioTrack = mediaStream.getAudioTracks()[0];
 
     // Apply ugly workaround to apply echo cancellation in Chromium based browsers
-    if (this._bowser.getEngineName() === 'Blink' && audioTrack?.getConstraints()?.echoCancellation) {
-      const outputDestination = this._audioContext.createMediaStreamDestination();
-      this._decoderNode.disconnect(this._audioContext.destination);
+    if (isBlinkBrowser() && audioTrack?.getConstraints()?.echoCancellation) {
+      const outputDestination = this._audioContexts.output.createMediaStreamDestination();
+      this._decoderNode.disconnect(this._audioContexts.output.destination);
       this._decoderNode.connect(outputDestination);
 
       const webrtc = await this.webrtcLoopback(audioTrack, outputDestination.stream.getAudioTracks()[0]);
@@ -258,7 +272,7 @@ export class AudioService {
       this.webrtcDummy(outputStream);
 
       this._audioSource?.disconnect();
-      this._audioSource = this._audioContext.createMediaStreamSource(inputStream);
+      this._audioSource = this._audioContexts.input.createMediaStreamSource(inputStream);
       this._audioSource.connect(this._encoderNode);
 
       this._audioElement?.remove();
@@ -269,15 +283,16 @@ export class AudioService {
       await this._audioElement.play();
     } else {
       this._audioSource?.disconnect();
-      this._audioSource = this._audioContext.createMediaStreamSource(mediaStream);
+      this._audioSource = this._audioContexts.input.createMediaStreamSource(mediaStream);
       this._audioSource?.connect(this._encoderNode);
     }
   }
 
   /**
-   * Updates settings for voice activity detection and volume gate.
+   * Updates settings for voice activity detection and volume gate. These settings control how voice activity is detected and how
+   * the volume gate is operated.
    *
-   * @param settings The new settings and thresholds.
+   * @param settings The new configurations and thresholds for voice activity detection and volume gate
    */
   setVoiceProcessingConfig(settings: IOdinAudioSettings) {
     this._audioSettings = settings;
@@ -331,7 +346,8 @@ export class AudioService {
   }
 
   /**
-   * Helper functions to pipe all incoming audio through WebRTC to allow echo cancellation on Chromium based browsers.
+   * Helper functions to allow echo cancellation on Chromium based browsers by piping all incoming audio through WebRTC. This is a
+   * workaround to a known issue in Chromium.
    *
    * See https://bugs.chromium.org/p/chromium/issues/detail?id=687574
    */

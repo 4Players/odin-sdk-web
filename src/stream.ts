@@ -204,7 +204,6 @@ async function receive(stream: Stream, bytes: any) {
       const result = message[3];
       if (valid) {
         receiveResponse(stream, message[1], message[2], result);
-        // handler(message[1], message[3]);
       } else {
         console.error('received invalid formatted response', message);
       }
@@ -227,10 +226,9 @@ async function receive(stream: Stream, bytes: any) {
 }
 
 /**
- * MessagePack RPC request handling.
- * Calls the given handler method.
+ * MessagePack RPC request handling. Calls the given handler method.
  */
-async function receiveRequest(stream: Stream, id: number | null, method: OdinEventMethods, params: unknown) {
+async function receiveRequest(stream: OdinStream, id: number | null, method: OdinEventMethods, params: unknown) {
   try {
     const response = stream.handler(method, params);
     if (id !== null && stream.websocket !== null) {
@@ -271,11 +269,9 @@ function receiveResponse<T extends EventSchemas>(
 /**
  * Creates a handler which correctly handles the event depending on the method and validates its params.
  *
- * @param schemas The object which provides the schemas that are used to check recursively the type of the value at runtime
+ * @param schemas  The object which provides the schemas that are used to check recursively the type of the value at runtime
  * @param handlers All event handler for the given schema<T>
- *
- * @returns Returns a handler function that takes the method (type) and the params as argument (The msgpack params).
- * Internally, this function checks, if the method is known in the schemas, and if this is the case, handle the event.
+ * @returns        Returns a handler function that takes the method (type) and the params as argument (The msgpack params)
  */
 export const makeHandler = <T extends EventSchemas, I>(schemas: T, handlers: EventHandlers<T, I>, instance: I) => {
   return (method: string, params: unknown) => {
@@ -289,6 +285,7 @@ export const makeHandler = <T extends EventSchemas, I>(schemas: T, handlers: Eve
 
 /**
  * Check if the method (from msgpack) is a property of the schema. If not, the event can not be handled.
+ *
  * @param schemas Schema object
  * @param method Name of the method
  * @returns true if the property is a keyof EventSchemas (boolean)
@@ -300,10 +297,10 @@ const isKnownMethod = <T extends EventSchemas>(schemas: T, method: PropertyKey):
 /**
  * Validates the params and calls the given eventHandler, determined by the given method.
  *
- * @param schemas Schema object
+ * @param schemas  Schema object
  * @param handlers All provided EventHandlers<T> while T is a EventSchema
- * @param method A string which is one of the EventHandler names
- * @param params The params that getting passes through and getting called
+ * @param method   A string which is one of the EventHandler names
+ * @param params   The params that getting passes through and getting called
  */
 const handleEvent = <T extends EventSchemas, U extends keyof T, I>(
   schemas: T,

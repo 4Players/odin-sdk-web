@@ -17,8 +17,20 @@ import { workerScript } from './worker';
  * Class providing static methods to handle ODIN client connections.
  */
 export class OdinClient {
+
+  /**
+   * EventTarget instance to listen for and dispatch custom events.
+   */
   private static _eventTarget: EventTarget = new EventTarget();
+
+  /**
+   * Connection state of the client to the ODIN server.
+   */
   private static _state: OdinConnectionState = 'disconnected';
+
+  /**
+   * Array holding the currently available `OdinRoom` instances.
+   */
   private static _rooms: OdinRoom[] = [];
   private static _mainStream: Stream;
   private static _rtcHandler?: RtcHandler;
@@ -54,7 +66,7 @@ export class OdinClient {
   }
 
   /**
-   * Update the state of the connection.
+   * Updates the state of the connection.
    */
   private static set connectionState(state: OdinConnectionState) {
     const oldState = this.connectionState;
@@ -76,7 +88,8 @@ export class OdinClient {
   }
 
   /**
-   * Authenticates against the configured ODIN gateway and establishes the main stream connection.
+   * Authenticates the client, establishes the main stream connection, sets up audio context and WebRTC connection, and finally
+   * creates `OdinRoom` instances.
    *
    * @private
    */
@@ -161,9 +174,9 @@ export class OdinClient {
   /**
    * Authenticates against the ODIN server and returns `OdinRoom` instances for all rooms set in the specified token.
    *
-   * @param token The room token for authentication
+   * @param token   The room token for authentication
    * @param gateway The gateway to authenticate against
-   * @returns A promise of the available rooms
+   * @returns       A promise of the available rooms
    */
   static async initRooms(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom[]> {
     try {
@@ -176,9 +189,9 @@ export class OdinClient {
   /**
    * Authenticates against the ODIN server and returns an `OdinRoom` instance for the first room set in the specified token.
    *
-   * @param token The room token for authentication
+   * @param token   The room token for authentication
    * @param gateway The gateway to authenticate against
-   * @returns A promise of the first available room
+   * @returns       A promise of the first available room
    */
   static async initRoom(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom> {
     const rooms = await this.initRooms(token, gateway, audioContext);
@@ -200,7 +213,9 @@ export class OdinClient {
   /**
    * Authenticates against the gateway and returns its result.
    *
-   * @private
+   * @param token   The token for authentication
+   * @param gateway The gateway to authenticate against
+   * @returns       A promise resolving to the authentication result
    */
   private static async authGateway(token: string, gateway: string): Promise<IAuthResult> {
     let response: Response | undefined;

@@ -23,15 +23,42 @@ import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './sch
  * Class describing an `OdinRoom`.
  */
 export class OdinRoom {
+  /**
+   * An instance of `EventTarget` for handling events related to this room.
+   */
+  private _eventTarget: EventTarget = new EventTarget();
+
+  /**
+   * The `OdinPeer` instance representing the current user within the room.
+   */
   private _ownPeer!: OdinPeer;
-  private _customer: string = '';
+
+  /**
+   * The two-dimensional position of the current user within the room.
+   */
+  private _position!: [number, number];
+
+  /**
+   * The current connection state of the room, defaulting to 'disconnected'.
+   */
+  private _connectionState: OdinConnectionState = 'disconnected';
+
+  /**
+   * The arbitrary user data for the room.
+   */
   private _data: Uint8Array = new Uint8Array();
+
+  /**
+   * A Map storing all remote `OdinPeer` instances within the room, using the peer ID as the key.
+   */
   private _remotePeers: Map<number, OdinPeer> = new Map();
   private _roomStream!: Stream;
-  private _eventTarget: EventTarget = new EventTarget();
-  private _connectionState: OdinConnectionState = 'disconnected';
   private _audioService!: AudioService;
-  private _position!: [number, number];
+
+  /**
+   * The customer identifier to which this room is assigned.
+   */
+  private _customer: string = '<no customer>';
 
   /**
    * Creates a new `OdinRoom` instance.
@@ -140,12 +167,13 @@ export class OdinRoom {
   /**
    * Joins the room and returns your own peer instance after the room was successfully joined.
    *
-   * @param userData Optional user data to set for the peer when connecting.
-   * @param position Optional coordinates to set the two-dimensional position of the peer in the room when connecting.
-   * @returns A promise of the own OdinPeer which yields when the room was joined
+   * @param userData Optional user data to set for the peer when connecting
+   * @param position Optional coordinates to set the two-dimensional position of the peer in the room when connecting
+   * @returns        A promise of the own OdinPeer which yields when the room was joined
    */
   async join(userData?: Uint8Array, position?: [number, number]): Promise<OdinPeer> {
     this.connectionState = 'connecting';
+
     if (!position) {
       const a = Math.random() * 2 * Math.PI;
       const r = 0.5 * Math.sqrt(Math.random());
@@ -169,6 +197,7 @@ export class OdinRoom {
       } catch (e) {
         throw new Error('JoinRoom on the main stream failed\n' + e);
       }
+
       if (!streamId) throw new Error('No Stream ID fetched\n');
 
       try {
@@ -207,12 +236,13 @@ export class OdinRoom {
   /**
    * Changes the active capture stream (e.g. when switching to another input device).
    *
-   * @param mediaStream The capture stream of the input device.
+   * @param mediaStream The capture stream of the input device
    */
   async changeMediaStream(mediaStream: MediaStream) {
     if (this.connectionState !== 'connected') {
       throw new Error('Unable to change media stream; room is not connected\n');
     }
+
     try {
       await this._audioService.updateInputStream(mediaStream);
     } catch (e) {
@@ -223,9 +253,9 @@ export class OdinRoom {
   /**
    * Creates a new local media using the specified stream.
    *
-   * @param mediaStream The capture stream of the input device.
-   * @param audioSettings Optional audio settings like VAD or master volume used to initialize audio.
-   * @returns A Promise of the newly created OdinMedia.
+   * @param mediaStream   The capture stream of the input device
+   * @param audioSettings Optional audio settings like VAD or master volume used to initialize audio
+   * @returns             A promise of the newly created OdinMedia.
    */
   async createMedia(mediaStream: MediaStream, audioSettings?: IOdinAudioSettings): Promise<OdinMedia> {
     if (this.connectionState !== 'connected') {
@@ -261,7 +291,7 @@ export class OdinRoom {
   /**
    * Adds a local media stream to the room.
    *
-   * @param media The media instance to be added.
+   * @param media The media instance to be added
    * @ignore
    */
   async addMedia(media: OdinMedia) {
@@ -278,7 +308,7 @@ export class OdinRoom {
   /**
    * Removes a local media stream from the room.
    *
-   * @param media The media instance to be removed.
+   * @param media The media instance to be removed
    * @ignore
    */
   async removeMedia(media: OdinMedia) {
@@ -295,11 +325,12 @@ export class OdinRoom {
   /**
    * Updates the two-dimensional position of our own `OdinPeer` in the room to apply server-side culling.
    *
-   * @param offsetX
-   * @param offsetY
+   * @param offsetX The new X coordinate for the peers position in the room
+   * @param offsetY The new Y coordinate for the peers position in the room
    */
   setPosition(offsetX: number, offsetY: number): void {
     this._position = [offsetX, offsetY];
+
     if (this._connectionState === 'connected') {
       this._roomStream?.request('SetPeerPosition', {
         position: [offsetX, offsetY],
@@ -340,20 +371,23 @@ export class OdinRoom {
    */
   async sendMessage(message: Uint8Array, targetPeerIds?: number[]) {
     const params: IMessageData = { message };
+
     if (targetPeerIds) {
       params.target_peer_ids = targetPeerIds;
     }
+
     await this._roomStream?.request('SendMessage', params);
   }
 
   /**
-   * Disconnects the room
+   * Leaves the room and closes the connection to the server.
    *
    * @ignore
    */
   disconnect(): void {
     this._remotePeers.clear();
     this._roomStream?.close();
+
     this.connectionState = 'disconnected';
   }
 
@@ -476,9 +510,8 @@ export class OdinRoom {
    */
   private peerUpdated(update: PeerUpdatedSchemaType): void {
     const peer = this._remotePeers.get(update.peer_id);
-    if (!peer) {
-      return;
-    }
+    if (!peer) return;
+
     switch (update.kind) {
       case 'MediaStarted': {
         if (!update.media) {
@@ -551,13 +584,17 @@ export class OdinRoom {
     if (peerId === this._ownPeer.id) {
       throw new Error('Can not add the remote peer with this method\n');
     }
+
     const peer = new OdinPeer(this._roomStream, peerId, userId, true);
     peer.data = data;
+
     medias.forEach((media) => {
       const mediaInstance = new OdinMedia(media.id, peerId, true);
       peer.addMedia(mediaInstance);
     });
+
     this._remotePeers.set(peerId, peer);
+
     return peer;
   }
 

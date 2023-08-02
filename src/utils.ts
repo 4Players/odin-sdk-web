@@ -3,13 +3,20 @@ import { JsonValue } from './types';
 
 export async function openStream(url: string, handler: StreamHandler): Promise<Stream> {
   const stream = new Stream(url, handler);
+/**
+ * Opens a new ODIN main/room stream and registers events handlers.
+ *
+ * @param url     The URL to the main/room stream server
+ * @param handler The handler for ODIN events
+ * @returns       The new steam
+ */
   try {
     await new Promise((resolve, reject) => {
       stream.addEventListener('open', resolve, { once: true });
       stream.addEventListener('error', reject, { once: true });
     });
   } catch (e) {
-    throw new Error('Could not open the main stream\n' + e);
+    throw new Error('Could not open the stream\n' + e);
   }
   return stream;
 }
@@ -18,6 +25,12 @@ export function toRaw<T extends JsonValue>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
+/**
+ * Parses a given JWT and returns its claims.
+ *
+ * @param token The JTW to parse
+ * @returns     The payload
+ */
 export function parseJwt(token: string) {
   const base64Url = token.split('.')[1];
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -36,7 +49,7 @@ export function parseJwt(token: string) {
  * Encodes a value or an object with the help of JSON.stringify to an Uint8Array.
  *
  * @param value Value or object to encode
- * @returns The Uint8Array encoded value
+ * @returns     The Uint8Array encoded value
  */
 export function valueToUint8Array(value: any): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(value));
@@ -46,7 +59,7 @@ export function valueToUint8Array(value: any): Uint8Array {
  * Decodes a Uint8Array.
  *
  * @param bytes Byte array to decode
- * @returns The decoded value or undefined on error
+ * @returns     The decoded value or undefined on error
  */
 export function uint8ArrayToValue(bytes: Uint8Array): unknown {
   if (bytes.length === 0) return undefined;

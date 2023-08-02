@@ -7,16 +7,31 @@ import { Stream } from './stream';
  * Class describing a single peer inside an `OdinRoom`.
  */
 export class OdinPeer {
-  private _freeMediaIds: number[] = [];
-  private _activeMedias: Map<number, OdinMedia> = new Map();
-  private _data: Uint8Array = new Uint8Array();
+  /**
+   * An instance of `EventTarget` for handling events related to this peer.
+   */
   private _eventTarget: EventTarget = new EventTarget();
+
+  /**
+   * Free media IDs available to this peer.
+   */
+  private _freeMediaIds: number[] = [];
+
+  /**
+   * Map of currently active media instances associated with this peer.
+   */
+  private _activeMedias: Map<number, OdinMedia> = new Map();
+
+  /**
+   * User data associated with the peer.
+   */
+  private _data: Uint8Array = new Uint8Array();
   private _audioService: AudioService | null;
 
   /**
    * Creates a new `OdinPeer` instance.
    *
-   * @param _id The ID of the new peer
+   * @param _id     The ID of the new peer
    * @param _userId The user ID of the new peer
    * @param _remote Indicates, whether the peer is a remote peer or not
    * @ignore

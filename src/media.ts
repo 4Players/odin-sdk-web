@@ -5,9 +5,20 @@ import { AudioService } from './audio-service';
  * Class describing a single media stream inside an `OdinRoom`.
  */
 export class OdinMedia {
+  /**
+   * An instance of `EventTarget` for handling events related to this media.
+   */
   private _eventTarget: EventTarget = new EventTarget();
   private _audioService: AudioService | null;
+
+  /**
+   * A boolean that indicates if the media is active or not.
+   */
   private _active = false;
+
+  /**
+   * Represents the volume of the media stream, default value is 1.
+   */
   private _volume = 1;
 
   /**
@@ -82,7 +93,7 @@ export class OdinMedia {
   }
 
   /**
-   * Starts the encoder/decoder for the media and adds it to the room if its a local media.
+   * Starts the media stream by initiating the encoder/decoder and adding it to the room if it belongs to the local peer.
    *
    * @returns A promise which yields when the request is resolved
    */
@@ -116,7 +127,7 @@ export class OdinMedia {
   }
 
   /**
-   * Stops the encoder/decoder for the media and removes it from the room if its a local media.
+   * Stops the media stream by terminating the encoder/decoder and removing it from the room if it belongs to the local peer.
    *
    * @returns A promise which yields when the request is resolved
    */
