@@ -528,6 +528,9 @@ export class OdinRoom {
       case 'MediaStarted': {
         if (!update.media) {
           throw Error(`The peer update of kind ${update.kind} is missing fields.`);
+        } else if (update.media.properties?.kind === 'video') {
+          // support for video medias will be added in a future sdk releases
+          return;
         }
         const media = new OdinMedia(update.media.id, update.peer_id, true);
         peer.addMedia(media);
@@ -594,7 +597,12 @@ export class OdinRoom {
    * @param medias A list of media IDs to initialize for the peer
    * @param data   The user data for the peer
    */
-  private addRemotePeer(peerId: number, userId: string, medias: { id: number }[], data: Uint8Array): OdinPeer {
+  private addRemotePeer(
+    peerId: number,
+    userId: string,
+    medias: { id: number; properties?: any }[],
+    data: Uint8Array
+  ): OdinPeer {
     if (peerId === this._ownPeer.id) {
       throw new Error('Can not add the remote peer with this method\n');
     }
@@ -603,6 +611,10 @@ export class OdinRoom {
     peer.data = data;
 
     medias.forEach((media) => {
+      if (media.properties?.kind === 'video') {
+        // support for video medias will be added in a future sdk releases
+        return;
+      }
       const mediaInstance = new OdinMedia(media.id, peerId, true);
       peer.addMedia(mediaInstance);
     });
