@@ -121,7 +121,6 @@ function handleRoomEvents(room: OdinRoom) {
   // Handle peer user data changes to update our UI
   room.addEventListener('PeerUserDataChanged', (event) => {
     console.log(`Received user data update for peer ${event.payload.peer.id}`);
-    console.log(event.payload.peer);
     addOrUpdateUiPeer(event.payload.peer);
   });
 
