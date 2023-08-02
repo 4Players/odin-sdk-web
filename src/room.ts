@@ -157,6 +157,13 @@ export class OdinRoom {
   }
 
   /**
+   * The current two-dimensional position of our own `OdinPeer` in the room.
+   */
+  get position(): [number, number] {
+    return this._position;
+  }
+
+  /**
    * An event target handler for the room.
    *
    * @ignore
@@ -348,13 +355,6 @@ export class OdinRoom {
         position: [offsetX, offsetY],
       });
     }
-  }
-
-  /**
-   * Get the latest position
-   */
-  getPosition(): [number, number] {
-    return this._position;
   }
 
   /**
