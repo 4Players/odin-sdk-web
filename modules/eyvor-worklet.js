@@ -1,7 +1,10 @@
-/* eyvor [Revision: c7eeadd1be207b48a4f9c5e6bfe56715f4248814] */
+/* eyvor [Revision: 101d3cd103dd769b5e64d15d0cac7b25898c994c] */
 class Decoder extends AudioWorkletProcessor {
     constructor(...args) {
         super(...args);
+        if (sampleRate != 48000 /* 48kHz */) {
+            throw "playback sample rate must be 48khz"
+        }
 
         /** @type {MessagePort} */
         this.worker = null;
@@ -89,8 +92,8 @@ class Decoder extends AudioWorkletProcessor {
 class Encoder extends AudioWorkletProcessor {
     constructor(...args) {
         super(...args);
-        if (sampleRate != 48000 /* 48kHz */) {
-            throw "sample rate must be 48khz"
+        if (sampleRate % 50) {
+            throw Error('sample rate must neatly fit into 20ms chunks');
         }
 
         /** @type {MessagePort} */
