@@ -3,6 +3,7 @@ import {
   IOdinClientSettings,
   IOdinClientEvents,
   IOdinConnectionStateChangedEventPayload,
+  OdinAudioContextConfig,
   OdinConnectionState,
   OdinEvent,
 } from './types';
@@ -10,7 +11,7 @@ import { OdinAudioService } from './audio';
 import { OdinRtcHandler } from './rtc-handler';
 import { OdinStream } from './stream';
 import { OdinRoom } from './room';
-import { openStream } from './utils';
+import { openStream, setupDefaultAudioContext } from './utils';
 import { workerScript } from './worker';
 
 /**
@@ -27,6 +28,10 @@ export class OdinClient {
    */
   private static _rtcHandler?: OdinRtcHandler;
 
+  /**
+   * Web Worker used for off-thread operations.
+   */
+  private static _worker?: Worker;
 
   /**
    * Main WebSocket stream to interact with the ODIN server.
@@ -47,7 +52,6 @@ export class OdinClient {
    * Array holding the currently available `OdinRoom` instances.
    */
   private static _rooms: OdinRoom[] = [];
-  private static _worker?: Worker;
 
   /**
    * @ignore

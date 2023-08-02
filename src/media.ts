@@ -112,7 +112,9 @@ export class OdinMedia {
       this._audioService.audioWorker.postMessage({
         type: 'start_decoder',
         media_id: this._id,
-        properties: {},
+        properties: {
+          sample_rate: this._audioService.outputSampleRate,
+        },
       });
     } else {
       await this._audioService.room.addMedia(this);
@@ -120,7 +122,7 @@ export class OdinMedia {
         type: 'start_encoder',
         media_id: this._id,
         properties: {
-          cbr: false,
+          sample_rate: this._audioService.inputSampleRate,
           fec: true,
           voip: true,
         },

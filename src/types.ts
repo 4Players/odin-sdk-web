@@ -140,9 +140,14 @@ export interface IOdinAudioStats {
 }
 
 /**
+ * Helper type to use for init and connect functions.
+ */
+export type OdinAudioContextConfig = { input: AudioContext; output: AudioContext };
+
+/**
  * Enum defining all possible connection states of the ODIN client.
  */
-export type OdinConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type OdinConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'incomplete';
 
 /**
  * Interface describing the payload of an `OdinConnectionStateChangedEvent`.

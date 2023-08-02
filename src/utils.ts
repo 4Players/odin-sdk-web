@@ -1,4 +1,5 @@
 import { OdinStreamHandler, OdinStream } from './stream';
+import { OdinAudioContextConfig } from './types';
 
 /**
  * Opens a new ODIN main/room stream and registers events handlers.
@@ -63,4 +64,18 @@ export function uint8ArrayToValue(bytes: Uint8Array): unknown {
   } catch (e) {
     return undefined;
   }
+}
+
+/**
+ * Creates new audio contexts for both audio input and output.
+ * If the sample rate of the input device is 48 kHz, we can use the same audio context for both.
+ *
+ * @param audioContext Current input audio context
+ * @returns            The new set of audio contexts
+ */
+export function setupDefaultAudioContext(audioContext?: AudioContext): OdinAudioContextConfig {
+  const input = typeof audioContext !== 'undefined' ? audioContext : new AudioContext();
+  const output = input.sampleRate === 48000 ? input : new AudioContext({ sampleRate: 48000 });
+
+  return { input, output };
 }
