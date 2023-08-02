@@ -79,3 +79,13 @@ export function setupDefaultAudioContext(audioContext?: AudioContext): OdinAudio
 
   return { input, output };
 }
+
+/**
+ * Tests the user agent against a valid pattern for Blink-based browsers.
+ *
+ * @returns True if we're using a Blink browser
+ */
+export function isBlinkBrowser(): boolean {
+  const pattern = /(apple)?webkit\/537\.36/i;
+  return pattern.test(window.navigator.userAgent);
+}
