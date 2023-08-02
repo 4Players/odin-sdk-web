@@ -2,28 +2,54 @@ import {
   IOdinAudioSettings,
   IOdinAudioStatsEventPayload,
   IOdinMediaActivityChangedEventPayload,
+  OdinAudioContextConfig,
   OdinEvent,
 } from './types';
 import { OdinRoom } from './room';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
+import { isBlinkBrowser } from './utils';
 import { workletScript } from './worker';
-
-import Bowser from 'bowser';
 
 /**
  * Class responsible for handling audio encoding/decoding operations and emitting events related
  * to voice activity status.
  */
-export class AudioService {
-  private static _instance: AudioService;
-  private _audioElement: HTMLAudioElement | null = null;
-  private _audioSource: MediaStreamAudioSourceNode | null = null;
-  private _encoderNode!: AudioWorkletNode;
-  private _decoderNode!: AudioWorkletNode;
-  private _medias: OdinMedia[] = [];
+export class OdinAudioService {
+  /**
+   * Singleton instance of the audio service.
+   */
+  private static _instance?: OdinAudioService;
+
+  /**
+   * Audio element for playback.
+   */
+  private _audioElement?: HTMLAudioElement;
+
+  /**
+   * The audio source node from the media stream.
+   */
+  private _audioSource?: MediaStreamAudioSourceNode;
+
+  /**
+   * Node responsible for encoding the audio.
+   */
+  private _encoderNode?: AudioWorkletNode;
+
+  /**
+   * Node responsible for decoding the audio.
+   */
+  private _decoderNode?: AudioWorkletNode;
+
+  /**
+   * Room associated with this audio service.
+   */
   private _room!: OdinRoom;
-  private _bowser!: Bowser.Parser.Parser;
+
+  /**
+   * Array to hold OdinMedia instances.
+   */
+  private _medias: OdinMedia[] = [];
 
   /**
    * Percent of outgoing media packets to artificially drop.
@@ -42,13 +68,18 @@ export class AudioService {
     volumeGateReleaseLoudness: -40,
   };
 
+  /**
+   * Initializes and returns a singleton instance of the audio service. If the instance already exists, returns the existing instance.
+   *
+   * @param _worker           The worker instance responsible for audio encoding/decoding
+   * @param _audioDataChannel The RTC data channel used for transmitting audio data
+   * @param _audioContexts    The web audio context used for input/output audio processing
+   */
   private constructor(
     private _worker: Worker,
     private _audioDataChannel: RTCDataChannel,
-    private _audioContext: AudioContext
+    private _audioContexts: OdinAudioContextConfig
   ) {
-    this._bowser = Bowser.getParser(window.navigator.userAgent);
-
     this._worker.onmessage = (event) => {
       switch (event.data.type) {
         case 'packet':
@@ -79,35 +110,41 @@ export class AudioService {
    * @return   The peer object matching the specified media ID or `undefined` if none found
    */
   getPeerByMediaId(id: number): OdinPeer | undefined {
-    if (this._room.ownPeer.medias.get(id)) return this._room.ownPeer;
-    let peer!: OdinPeer;
-    this._room.remotePeers.forEach((p) => {
-      if (p.medias.get(id)) peer = p;
-    });
-    return peer;
+    if (this._room.ownPeer.medias.get(id)) {
+      return this._room.ownPeer;
+    }
+
+    for (const [, peer] of this._room.remotePeers) {
+      if (peer.medias.get(id)) {
+        return peer;
+      }
+    }
+
+    return undefined;
   }
 
   /**
    * Initializes and returns a singleton instance of the audio service.
    *
-   * @param ms            The local microphone capture stream
    * @param worker        The worker instance handing all the encoding/decoding
    * @param audioChannel  The RTC data channel used to transfer audio data
-   * @param audioSettings Optional audio settings to apply
+   * @param audioContexts The web audio contexts for processing capture/playback data
    */
-  static setInstance(worker: Worker, audioChannel: RTCDataChannel, audioContext: AudioContext): AudioService {
-    this._instance = new AudioService(worker, audioChannel, audioContext);
+  static setInstance(
+    worker: Worker,
+    audioChannel: RTCDataChannel,
+    audioContexts: OdinAudioContextConfig
+  ): OdinAudioService {
+    this._instance = new OdinAudioService(worker, audioChannel, audioContexts);
+
     return this._instance;
   }
 
   /**
    * Returns a singleton instance of the audio service.
    */
-  static getInstance(): AudioService | null {
-    if (this._instance) {
-      return this._instance;
-    }
-    return null;
+  static getInstance(): OdinAudioService | undefined {
+    return this._instance;
   }
 
   /**
@@ -149,6 +186,20 @@ export class AudioService {
     if (value >= 0 && value <= 100) {
       this._artificialPacketLoss = value;
     }
+  }
+
+  /**
+   * Returns the sample rate of the input audio context.
+   */
+  get inputSampleRate(): number {
+    return this._audioContexts.input.sampleRate;
+  }
+
+  /**
+   * Returns the sample rate of the output audio context.
+   */
+  get outputSampleRate(): number {
+    return this._audioContexts.output.sampleRate;
   }
 
   /**
@@ -214,13 +265,14 @@ export class AudioService {
    * Set up the audio device, encoder and decoder.
    */
   async setupAudio(): Promise<void> {
-    await this._audioContext.audioWorklet.addModule(workletScript);
-
-    this._decoderNode = new AudioWorkletNode(this._audioContext, 'eyvor-decoder', {
+    await this._audioContexts.output.audioWorklet.addModule(workletScript);
+    this._decoderNode = new AudioWorkletNode(this._audioContexts.output, 'eyvor-decoder', {
       numberOfInputs: 0,
       numberOfOutputs: 1,
     });
-    this._encoderNode = new AudioWorkletNode(this._audioContext, 'eyvor-encoder', {
+
+    await this._audioContexts.input.audioWorklet.addModule(workletScript);
+    this._encoderNode = new AudioWorkletNode(this._audioContexts.input, 'eyvor-encoder', {
       numberOfInputs: 1,
       numberOfOutputs: 0,
     });
@@ -320,7 +372,8 @@ export class AudioService {
   }
 
   /**
-   * Stops all audio encoding/decoding and closes the related connections.
+   * Stops all audio encoding/decoding and closes the related connections. This includes disconnecting the encoder and decoder nodes,
+   * closing the audio data channel, and stopping any audio currently playing.
    */
   stopAllAudio() {
     if (this._encoderNode) {
@@ -331,17 +384,20 @@ export class AudioService {
     }
     if (this._audioSource) {
       this._audioSource.disconnect();
-      this._audioSource = null;
+      this._audioSource = undefined;
     }
-    if (this._audioContext && this._audioContext.state !== 'closed') {
-      this._audioContext.close();
+    if (this._audioContexts.input && this._audioContexts.input.state !== 'closed') {
+      this._audioContexts.input.close();
+    }
+    if (this._audioContexts.output && this._audioContexts.output.state !== 'closed') {
+      this._audioContexts.output.close();
     }
     if (this._audioDataChannel) {
       this._audioDataChannel.close();
     }
     if (this._audioElement) {
       this._audioElement.pause();
-      this._audioElement = null;
+      this._audioElement = undefined;
     }
   }
 

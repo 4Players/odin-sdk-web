@@ -6,9 +6,9 @@ import {
   OdinEvent,
   IOdinConnectionStateChangedEventPayload,
 } from './types';
-import { AudioService } from './audio-service';
 import { RtcHandler } from './rtc-handler';
 import { Stream } from './stream';
+import { OdinAudioService } from './audio';
 import { OdinRoom } from './room';
 import { openStream } from './utils';
 import { workerScript } from './worker';
@@ -17,6 +17,11 @@ import { workerScript } from './worker';
  * Class providing static methods to handle ODIN client connections.
  */
 export class OdinClient {
+  /**
+   * Optional audio service used for ODIN audio functionality.
+   */
+  private static _audioService?: OdinAudioService;
+
 
   /**
    * EventTarget instance to listen for and dispatch custom events.
@@ -34,7 +39,6 @@ export class OdinClient {
   private static _rooms: OdinRoom[] = [];
   private static _mainStream: Stream;
   private static _rtcHandler?: RtcHandler;
-  private static _audioService?: AudioService;
   private static _worker?: Worker;
 
   /**
@@ -102,22 +106,25 @@ export class OdinClient {
       throw new Error('No gateway URL configured\n');
     }
 
+    let audioContexts: OdinAudioContextConfig | undefined;
+
     if (typeof audioContext === 'undefined') {
       if (typeof AudioContext === 'undefined') {
         console.warn('AudioContext is not available on this platform; disabling ODIN audio functionality');
       } else if (typeof Worker === 'undefined') {
         console.warn('Worker is not available on this platform; disabling ODIN audio functionality');
       } else {
-        audioContext = new AudioContext({ sampleRate: 48000 });
+        audioContexts = setupDefaultAudioContext(audioContext);
       }
     }
 
-    if (audioContext) {
-      await audioContext.resume();
+    if (audioContexts) {
+      await audioContexts.input.resume();
+      await audioContexts.output.resume();
 
       this._worker = new Worker(workerScript);
       this._rtcHandler = new RtcHandler(this._worker);
-      this._audioService = AudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContext);
+      this._audioService = OdinAudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContexts);
     }
 
     this.connectionState = 'connecting';

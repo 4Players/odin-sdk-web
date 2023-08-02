@@ -1,15 +1,19 @@
 import { IOdinMediaEvents } from './types';
-import { AudioService } from './audio-service';
+import { OdinAudioService } from './audio';
 
 /**
  * Class describing a single media stream inside an `OdinRoom`.
  */
 export class OdinMedia {
   /**
+   * An optional instance of `OdinAudioService` used for handling audio interactions.
+   */
+  private _audioService?: OdinAudioService;
+
+  /**
    * An instance of `EventTarget` for handling events related to this media.
    */
   private _eventTarget: EventTarget = new EventTarget();
-  private _audioService: AudioService | null;
 
   /**
    * A boolean that indicates if the media is active or not.
@@ -31,7 +35,7 @@ export class OdinMedia {
    * @ignore
    */
   constructor(private _id: number, private _peerId: number, private _remote: boolean) {
-    this._audioService = AudioService.getInstance();
+    this._audioService = OdinAudioService.getInstance();
   }
 
   /**

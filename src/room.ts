@@ -12,7 +12,7 @@ import {
   OdinConnectionState,
   OdinEvent,
 } from './types';
-import { AudioService } from './audio-service';
+import { OdinAudioService } from './audio';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
 import { makeHandler, Stream } from './stream';
@@ -23,6 +23,11 @@ import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './sch
  * Class describing an `OdinRoom`.
  */
 export class OdinRoom {
+  /**
+   * An optional instance of `OdinAudioService` used for handling audio interactions.
+   */
+  private _audioService?: OdinAudioService;
+
   /**
    * An instance of `EventTarget` for handling events related to this room.
    */
@@ -53,7 +58,6 @@ export class OdinRoom {
    */
   private _remotePeers: Map<number, OdinPeer> = new Map();
   private _roomStream!: Stream;
-  private _audioService!: AudioService;
 
   /**
    * The customer identifier to which this room is assigned.
@@ -70,7 +74,7 @@ export class OdinRoom {
    * @ignore
    */
   constructor(private _id: string, private _token: string, private _address: string, private _mainStream: Stream) {
-    const audioService = AudioService.getInstance();
+    const audioService = OdinAudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
       this._audioService.room = this;
@@ -239,7 +243,9 @@ export class OdinRoom {
    * @param mediaStream The capture stream of the input device
    */
   async changeMediaStream(mediaStream: MediaStream) {
-    if (this.connectionState !== 'connected') {
+    if (!this._audioService) {
+      throw new Error('Unable to change media stream; audio service is not available\n');
+    } else if (this.connectionState !== 'connected') {
       throw new Error('Unable to change media stream; room is not connected\n');
     }
 
@@ -258,7 +264,9 @@ export class OdinRoom {
    * @returns             A promise of the newly created OdinMedia.
    */
   async createMedia(mediaStream: MediaStream, audioSettings?: IOdinAudioSettings): Promise<OdinMedia> {
-    if (this.connectionState !== 'connected') {
+    if (!this._audioService) {
+      throw new Error('Unable to create new media; audio service is not available\n');
+    } else if (this.connectionState !== 'connected') {
       throw new Error('Unable to create new media; room is not connected\n');
     } else if (!this._ownPeer) {
       throw new Error('Unable to create new media; own peer information is not available\n');
@@ -565,6 +573,8 @@ export class OdinRoom {
    * @param volume The new volume
    */
   changeVolume(volume: number): void {
+    if (!this._audioService) return;
+
     this._audioService.audioWorker.postMessage({
       type: 'set_volume',
       media_id: 0,
@@ -635,6 +645,8 @@ export class OdinRoom {
    * Disables RNN-based voice activity detection.
    */
   disableVAD() {
+    if (!this._audioService) return;
+
     const config = this._audioService.getVoiceProcessingConfig();
 
     config.voiceActivityDetection = false;
@@ -646,6 +658,8 @@ export class OdinRoom {
    * Enables RNN-based voice activity detection.
    */
   enableVAD() {
+    if (!this._audioService) return;
+
     const config = this._audioService.getVoiceProcessingConfig();
 
     config.voiceActivityDetection = true;
@@ -660,6 +674,8 @@ export class OdinRoom {
    * @param releaseProbability Voice probability value when the VAD should disengage
    */
   updateVADThresholds(attackProbability: number, releaseProbability?: number) {
+    if (!this._audioService) return;
+
     const config = this._audioService.getVoiceProcessingConfig();
 
     config.voiceActivityDetectionAttackProbability = attackProbability;
@@ -672,6 +688,8 @@ export class OdinRoom {
    * Disables RNN-based voice activity detection.
    */
   disableVolumeGate() {
+    if (!this._audioService) return;
+
     const config = this._audioService.getVoiceProcessingConfig();
 
     config.volumeGate = false;
@@ -683,6 +701,8 @@ export class OdinRoom {
    * Enables RNN-based voice activity detection.
    */
   enableVolumeGate() {
+    if (!this._audioService) return;
+
     const config = this._audioService.getVoiceProcessingConfig();
 
     config.volumeGate = true;
@@ -697,6 +717,8 @@ export class OdinRoom {
    * @param releaseLoudness Root mean square power (dBFS) when the volume gate should disengage
    */
   updateVolumeGateThresholds(attackLoudness: number, releaseLoudness?: number) {
+    if (!this._audioService) return;
+
     const config = this._audioService.getVoiceProcessingConfig();
 
     config.volumeGateAttackLoudness = attackLoudness;
@@ -708,8 +730,8 @@ export class OdinRoom {
   /**
    * Returns the current voice processing config for VAD and volume gate.
    */
-  getAudioSettings(): IOdinAudioSettings {
-    return this._audioService.getVoiceProcessingConfig();
+  getAudioSettings(): IOdinAudioSettings | undefined {
+    return this._audioService?.getVoiceProcessingConfig();
   }
 
   /**

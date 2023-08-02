@@ -1,5 +1,5 @@
 import { IOdinPeerEvents } from './types';
-import { AudioService } from './audio-service';
+import { OdinAudioService } from './audio';
 import { OdinMedia } from './media';
 import { Stream } from './stream';
 
@@ -7,6 +7,11 @@ import { Stream } from './stream';
  * Class describing a single peer inside an `OdinRoom`.
  */
 export class OdinPeer {
+  /**
+   * An optional instance of `OdinAudioService` used for handling audio interactions.
+   */
+  private _audioService?: OdinAudioService;
+
   /**
    * An instance of `EventTarget` for handling events related to this peer.
    */
@@ -26,7 +31,6 @@ export class OdinPeer {
    * User data associated with the peer.
    */
   private _data: Uint8Array = new Uint8Array();
-  private _audioService: AudioService | null;
 
   /**
    * Creates a new `OdinPeer` instance.
@@ -37,7 +41,7 @@ export class OdinPeer {
    * @ignore
    */
   constructor(private _roomStream: Stream, private _id: number, private _userId: string, private _remote: boolean) {
-    this._audioService = AudioService.getInstance();
+    this._audioService = OdinAudioService.getInstance();
   }
 
   /**
