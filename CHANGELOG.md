@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.16.1
+- Fixed a bug that no audio was available when passing an `AudioContext` to the `OdinClient.initRoom()` method.
+
 ## 0.16.0
 
 - Replaced `OdinRoom.getPosition` function with `OdinRoom.position` getter.

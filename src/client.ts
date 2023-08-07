@@ -128,6 +128,8 @@ export class OdinClient {
       } else {
         audioContexts = setupDefaultAudioContext(audioContext);
       }
+    } else {
+      audioContexts = setupDefaultAudioContext(audioContext);
     }
 
     if (audioContexts) {
