@@ -1,7 +1,16 @@
 # Changelog
 
+## 0.17.0
+
+- Added `OdinRoom.pauseMedia` and `OdinRoom.resumeMedia`.
+- Added `OdinMedia.pause` and `OdinMedia.resume`.
+- Added `OdinMedia.paused` flag to determine wether or not a remote media is accepting data (e.g. server-side muted/unmuted).
+- Updated connection code to allow direct connections to on-premise servers without a gateway.
+- Fixed a bug where peer user data in JSON format was not shown correctly in TypeScript example.
+
 ## 0.16.1
-- Fixed a bug that no audio was available when passing an `AudioContext` to the `OdinClient.initRoom()` method.
+
+- Fixed a bug where audio was not accessible when supplying a custom `AudioContext` to `OdinClient.initRoom`.
 
 ## 0.16.0
 
