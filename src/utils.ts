@@ -22,12 +22,15 @@ export async function openStream(url: string, handler: OdinStreamHandler): Promi
 }
 
 /**
- * Parses a given JWT and returns its claims.
+ * Validates and parses a given JWT and returns its claims.
  *
- * @param token The JTW to parse
+ * @param token The JWT to parse
  * @returns     The payload
  */
 export function parseJwt(token: string) {
+  if (!/^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+(\.[A-Za-z0-9-_=]+)?$/.test(token)) {
+    return {};
+  }
   const base64Url = token.split('.')[1];
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
   const payload = decodeURIComponent(
