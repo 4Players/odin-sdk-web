@@ -118,21 +118,19 @@ export class OdinClient {
       throw new Error('No gateway URL configured\n');
     }
 
-    let audioContexts: OdinAudioContextConfig | undefined;
-
     if (typeof audioContext === 'undefined') {
       if (typeof AudioContext === 'undefined') {
         console.warn('AudioContext is not available on this platform; disabling ODIN audio functionality');
       } else if (typeof Worker === 'undefined') {
         console.warn('Worker is not available on this platform; disabling ODIN audio functionality');
       } else {
-        audioContexts = setupDefaultAudioContext(audioContext);
+        audioContext = new AudioContext(); // create fallback
       }
-    } else {
-      audioContexts = setupDefaultAudioContext(audioContext);
     }
 
-    if (audioContexts) {
+    if (audioContext) {
+      const audioContexts = setupDefaultAudioContext(audioContext);
+
       await audioContexts.input.resume();
       await audioContexts.output.resume();
 
@@ -209,9 +207,15 @@ export class OdinClient {
   /**
    * Authenticates against the ODIN server and returns `OdinRoom` instances for all rooms set in the specified token.
    *
-   * @param token   The room token for authentication
-   * @param gateway The gateway to authenticate against
-   * @returns       A promise of the available rooms
+   * This function accepts an optional `AudioContext` parameter for audio capture. The `AudioContext` interface is a part of
+   * the Web Audio API that represents an audio-processing graph, which can be used to control and manipulate audio signals
+   * in web applications. If the `AudioContext` is not provided or explicitly set to `undefined`, we will try to create one
+   * internally.
+   *
+   * @param token        The room token for authentication
+   * @param gateway      The gateway to authenticate against
+   * @param audioContext An optional audio context to use for capture
+   * @returns            A promise of the available rooms
    */
   static async initRooms(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom[]> {
     try {
@@ -224,9 +228,15 @@ export class OdinClient {
   /**
    * Authenticates against the ODIN server and returns an `OdinRoom` instance for the first room set in the specified token.
    *
-   * @param token   The room token for authentication
-   * @param gateway The gateway to authenticate against
-   * @returns       A promise of the first available room
+   * This function accepts an optional `AudioContext` parameter for audio capture. The `AudioContext` interface is a part of
+   * the Web Audio API that represents an audio-processing graph, which can be used to control and manipulate audio signals
+   * in web applications. If the `AudioContext` is not provided or explicitly set to `undefined`, we will try to create one
+   * internally.
+   *
+   * @param token        The room token for authentication
+   * @param gateway      The gateway to authenticate against
+   * @param audioContext An optional audio context to use for capture
+   * @returns            A promise of the first available room
    */
   static async initRoom(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom> {
     const rooms = await this.initRooms(token, gateway, audioContext);
