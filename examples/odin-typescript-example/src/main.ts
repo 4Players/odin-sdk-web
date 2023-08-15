@@ -4,6 +4,14 @@ import { OdinClient, OdinMedia, OdinPeer, OdinRoom, uint8ArrayToValue, valueToUi
 import './style.css';
 
 /**
+ * The address of an ODIN gateway or server to connect to.
+ *
+ * Please refer to our developer documentation for a list of public gateways available in your region:
+ * https://www.4players.io/odin/hosting/cloud/#available-gateways
+ */
+let serverAddress = 'gateway.odin.4players.io';
+
+/**
  * The local access key used in this example.
  *
  * ===== IMPORTANT =====
@@ -13,14 +21,14 @@ import './style.css';
  * recommend that you NEVER put an access key in your client-side code.
  *
  * Please refer to our developer documentation to learn more about access keys:
- * https://developers.4players.io/odin/introduction/access-keys/
+ * https://www.4players.io/odin/introduction/access-keys/
  */
 let accessKey = '';
 
 /**
  * The identifier of the room we want to join.
  */
-let roomId = '';
+let roomId = 'default';
 
 /**
  * The identifier to set for your own peer during authentication.
@@ -38,8 +46,11 @@ let userData = '';
  */
 async function connect(token: string) {
   try {
+    // Create an audio context (must happen after user interaction due to browser privacy features)
+    const audioContext = new AudioContext();
+
     // Authenticate and initialize the room
-    const odinRoom = await OdinClient.initRoom(token);
+    const odinRoom = await OdinClient.initRoom(token, serverAddress, audioContext);
 
     // Register room events
     handleRoomEvents(odinRoom);
@@ -151,6 +162,9 @@ const app: HTMLDivElement = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <h1>ODIN TypeScript Example</h1>
   <div id="login-form">
+    <label for="server-address">Server Address</label>
+    <input id="server-address" type="text" value="${serverAddress}" placeholder="The address of the ODIN server">
+    <select id="token-audience"><option>gateway</option><option>sfu</option></select>
     <label for="access-key">Access Key</label>
     <input id="access-key" type="text" value="${accessKey}" placeholder="A local access key for testing">
     <button id="generate-access-key">Generate</button>
@@ -166,6 +180,15 @@ app.innerHTML = `
     <legend id="room-title">Not Connected</legend>
   </fieldset>
 `;
+
+/**
+ * Grab server address input and register event handlers to handle manual changes.
+ */
+const serverAddressInput = app.querySelector<HTMLInputElement>('#server-address');
+serverAddressInput?.addEventListener('change', (e: any) => {
+  if (!e.target) return;
+  serverAddress = (e.target as HTMLInputElement).value;
+});
 
 /**
  * Grab access key input and register event handlers to handle manual changes.
@@ -229,7 +252,8 @@ const toggleConnectionBtn = document.querySelector<HTMLButtonElement>('#toggle-c
 toggleConnectionBtn?.addEventListener('click', (e: any) => {
   if (OdinClient.connectionState === 'disconnected' || OdinClient.connectionState === 'error') {
     const tokenGenerator = new TokenGenerator(accessKey);
-    const token = tokenGenerator.createToken(roomId, userId);
+    const audience = (app.querySelector<HTMLSelectElement>('#token-audience')?.value ?? 'gateway') as 'gateway' | 'sfu';
+    const token = tokenGenerator.createToken(roomId, userId, { audience, customer: '<no customer>' });
     console.log('Generated a new signed JWT to join room', token);
     connect(token);
   } else {
@@ -252,8 +276,10 @@ function addOrUpdateUiPeer(peer: OdinPeer) {
 
   const decodedData: unknown = uint8ArrayToValue(peer.data);
   let userData: string = '';
-  if (decodedData && typeof decodedData === 'string') {
-    userData = decodedData;
+  if (typeof decodedData === 'object') {
+    userData = JSON.stringify(decodedData);
+  } else {
+    userData = String(decodedData);
   }
 
   peerItem.setAttribute('id', `peer-${peer.id}`);
@@ -266,9 +292,21 @@ function addOrUpdateUiPeer(peer: OdinPeer) {
 
   peer.medias.forEach((media) => {
     const mediaItem = document.createElement('li');
+    const toggleIdx = `media-${media.id}-toggle`;
+    const toggleStr = media.remote ? `[<a href="#" id="${toggleIdx}" data-id="${media.id}">toggle</a>]` : '';
+
     mediaItem.setAttribute('id', `media-${media.id}`);
-    mediaItem.innerHTML = `Media(${media.id})`;
+    mediaItem.innerHTML = `Media(${media.id}) <div> Paused: ${media.paused} ${toggleStr} <div>`;
     mediaList.append(mediaItem);
+
+    document.querySelector<HTMLButtonElement>(`#${toggleIdx}`)?.addEventListener('click', async (e: any) => {
+      if (media.paused) {
+        await media.resume();
+      } else {
+        await media.pause();
+      }
+      addOrUpdateUiPeer(peer);
+    });
   });
 }
 

@@ -47,7 +47,7 @@
 }
 
 #login-form > button {
-  width: 80px;
+  width: 100px;
   height: var(--app-input-height);
   padding: 0 var(--app-padding);
   border: 1px solid var(--app-color-primary);
@@ -56,6 +56,15 @@
   color: var(--app-color-primary);
   font-weight: bold;
   transition: all ease 0.2s;
+}
+
+#login-form > select {
+  width: 100px;
+  height: var(--app-input-height);
+  padding: 0 var(--app-padding);
+  border: 1px solid var(--app-color-primary);
+  border-radius: var(--app-border-radius);
+  color: var(--app-color-primary);
 }
 
 #login-form > button:not(:disabled):hover {
