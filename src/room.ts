@@ -277,7 +277,7 @@ export class OdinRoom {
    *
    * @param mediaStream   The capture stream of the input device
    * @param audioSettings Optional audio settings like VAD or master volume used to initialize audio
-   * @returns             A promise of the newly created OdinMedia.
+   * @returns             A promise of the newly created OdinMedia
    */
   async createMedia(mediaStream: MediaStream, audioSettings?: IOdinAudioSettings): Promise<OdinMedia> {
     if (!this._audioService) {
@@ -344,6 +344,66 @@ export class OdinRoom {
       media_id: media.id,
       properties: {},
     });
+  }
+
+  /**
+   * Pauses a media stream and stops receiving data on it.
+   *
+   * @param media The remote media instance or ID to be paused
+   * @ignore
+   */
+  async pauseMedia(media: OdinMedia) {
+    if (!media.remote) {
+      throw new Error('Unable to pause media; media is owned by a local peer\n');
+    } else if (media.paused) {
+      throw new Error('Unable to pause media; media is already paused\n');
+    }
+
+    await this._roomStream?.request('PauseMedia', {
+      media_id: media.id,
+    });
+
+    media.paused = true;
+  }
+
+  /**
+   * Pauses a media stream and stops receiving data on it.
+   *
+   * @param media The remote media instance to be paused
+   * @ignore
+   */
+  async resumeMedia(media: OdinMedia) {
+    if (!media.remote) {
+      throw new Error('Unable to resume media; media is owned by a local peer\n');
+    } else if (!media.paused) {
+      throw new Error('Unable to resume media; media is already resumed\n');
+    }
+
+    await this._roomStream?.request('ResumeMedia', {
+      media_id: media.id,
+    });
+
+    media.paused = false;
+  }
+
+  /**
+   * Returns the `OdinMedia` instance matching the specified ID.
+   *
+   * @param id The media ID to search for
+   * @returns  The media instance if available
+   */
+  getMediaById(id: number): OdinMedia | undefined {
+    return this._audioService?.getMedia(id);
+  }
+
+  /**
+   * Returns the `OdinPeer` instance matching the specified ID.
+   *
+   * @param id The peer ID to search for
+   * @returns  The peer instance if available
+   */
+  getPeerById(id: number): OdinPeer | undefined {
+    return this._ownPeer.id === id ? this._ownPeer : this._remotePeers.get(id);
   }
 
   /**
@@ -538,6 +598,10 @@ export class OdinRoom {
           return;
         }
         const media = new OdinMedia(update.media.id, update.peer_id, true);
+        if (media.paused) {
+          // audio medias are unpaused by default so we only set this if the media is explicitly announced as paused
+          media.paused = true;
+        }
         peer.addMedia(media);
         peer.eventTarget.dispatchEvent(
           new OdinEvent<IOdinMediaStartedStoppedEventPayload>('MediaStarted', { room: this, peer, media })
@@ -605,7 +669,7 @@ export class OdinRoom {
   private addRemotePeer(
     peerId: number,
     userId: string,
-    medias: { id: number; properties?: any }[],
+    medias: { id: number; paused?: boolean | null; properties?: { kind?: string | null } }[],
     data: Uint8Array
   ): OdinPeer {
     if (peerId === this._ownPeer.id) {
@@ -621,6 +685,10 @@ export class OdinRoom {
         return;
       }
       const mediaInstance = new OdinMedia(media.id, peerId, true);
+      if (media.paused) {
+        // audio medias are unpaused by default so we only set this if the media is explicitly announced as paused
+        mediaInstance.paused = true;
+      }
       peer.addMedia(mediaInstance);
     });
 

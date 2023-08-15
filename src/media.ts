@@ -16,9 +16,14 @@ export class OdinMedia {
   private _eventTarget: EventTarget = new EventTarget();
 
   /**
-   * A boolean that indicates if the media is active or not.
+   * A boolean that indicates if the media is sending/receiving data or not.
    */
   private _active = false;
+
+  /**
+   * A boolean that indicates if the media is paused or not.
+   */
+  private _paused = false;
 
   /**
    * Represents the volume of the media stream, default value is 1.
@@ -60,7 +65,25 @@ export class OdinMedia {
   }
 
   /**
+   * Set the paused flag of the media.
+   *
+   * NOTE: Important do not adjust this manually!
+   */
+  set paused(paused: boolean) {
+    this._paused = paused;
+  }
+
+  /**
+   * Indicates wether or not the media is paused.
+   */
+  get paused(): boolean {
+    return this._paused;
+  }
+
+  /**
    * Set the activity status of the media.
+   *
+   * NOTE: Important do not adjust this manually!
    */
   set active(active: boolean) {
     this._active = active;
@@ -159,6 +182,32 @@ export class OdinMedia {
 
     this._active = false;
     this._audioService.unregisterMedia(this);
+  }
+
+  /**
+   * Paused the media stream on the server to stop receiving data on it.
+   *
+   * @returns A promise which yields when the request is resolved
+   */
+  async pause(): Promise<void> {
+    if (!this._audioService) {
+      throw new Error('Unable to pause media; AudioService is not available');
+    }
+
+    await this._audioService?.room.pauseMedia(this);
+  }
+
+  /**
+   * Paused the media stream on the server to start receiving data on it.
+   *
+   * @returns A promise which yields when the request is resolved
+   */
+  async resume(): Promise<void> {
+    if (!this._audioService) {
+      throw new Error('Unable to resume media; AudioService is not available');
+    }
+
+    await this._audioService?.room.resumeMedia(this);
   }
 
   /**

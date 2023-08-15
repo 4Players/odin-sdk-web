@@ -63,6 +63,7 @@ const MEDIA = create({
   optional: true,
   fields: {
     id: { type: 'Number' },
+    paused: { type: 'Boolean', optional: true },
     properties: {
       type: 'Object',
       fields: {
@@ -80,6 +81,7 @@ const MEDIAS = create({
   type: 'Object',
   fields: {
     id: { type: 'Number' },
+    paused: { type: 'Boolean', optional: true },
     properties: {
       type: 'Object',
       fields: {

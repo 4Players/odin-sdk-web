@@ -203,12 +203,21 @@ export class OdinAudioService {
   }
 
   /**
+   * Returns the `OdinMedia` instance matching the specified ID if known.
+   *
+   * @param id The media ID to search for
+   */
+  getMedia(id: number): OdinMedia | undefined {
+    return this._medias.find((media) => media.id === id);
+  }
+
+  /**
    * Returns true if the audio service knows a media with the specified ID.
    *
-   * @param media The media ID to search for
+   * @param id The media ID to search for
    */
   hasMedia(id: number): boolean {
-    return !!this._medias.find((media) => media.id === id);
+    return !!this.getMedia(id);
   }
 
   /**
