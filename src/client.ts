@@ -3,7 +3,6 @@ import {
   IOdinClientSettings,
   IOdinClientEvents,
   IOdinConnectionStateChangedEventPayload,
-  OdinAudioContextConfig,
   OdinConnectionState,
   OdinEvent,
 } from './types';
@@ -11,7 +10,7 @@ import { OdinAudioService } from './audio';
 import { OdinRtcHandler } from './rtc-handler';
 import { OdinStream } from './stream';
 import { OdinRoom } from './room';
-import { openStream, setupDefaultAudioContext } from './utils';
+import { openStream, parseJwt, setupDefaultAudioContext } from './utils';
 import { workerScript } from './worker';
 
 /**
@@ -109,13 +108,9 @@ export class OdinClient {
    *
    * @private
    */
-  private static async connect(token: string, gateway?: string, audioContext?: AudioContext): Promise<OdinRoom[]> {
+  private static async connect(token: string, server?: string, audioContext?: AudioContext): Promise<OdinRoom[]> {
     if (this.connectionState === 'connected') {
       return this._rooms;
-    }
-
-    if (!this.config.gatewayUrl && !gateway) {
-      throw new Error('No gateway URL configured\n');
     }
 
     if (typeof audioContext === 'undefined') {
@@ -149,9 +144,23 @@ export class OdinClient {
 
     this.connectionState = 'connecting';
 
+    if (!server) {
+      server = this.config.gatewayUrl; // use default gateway as fallback
+    } else if (server.indexOf('https://') !== -1) {
+      server = server.replace('https://', ''); // cleanup server address for now
+    }
+
     try {
-      const gatewayAuthResult = await this.authGateway(token, gateway ?? this.config.gatewayUrl);
-      this._mainStream = await openStream(`wss://${gatewayAuthResult.address}/main`, this.mainHandler);
+      const tokenClaims = parseJwt(token);
+
+      // always authenticate against gateway unless we specifically created a token for sfu audience
+      if (tokenClaims.aud !== 'sfu') {
+        const authResult = await this.authGateway(token, `https://${server}`);
+        server = authResult.address;
+        token = authResult.token;
+      }
+
+      this._mainStream = await openStream(`wss://${server}/main`, this.mainHandler);
 
       this._mainStream.onclose = () => {
         this.connectionState = 'disconnected';
@@ -166,7 +175,7 @@ export class OdinClient {
       let roomIds: string[] = [];
       try {
         const mainStreamAuthResult = (await this._mainStream.request('Authenticate', {
-          token: gatewayAuthResult.token,
+          token,
         })) as { room_ids: string[] };
 
         if (mainStreamAuthResult && mainStreamAuthResult.room_ids) {
@@ -183,7 +192,7 @@ export class OdinClient {
       await this._audioService?.setupAudio();
 
       this._rooms = roomIds.map((roomId) => {
-        return new OdinRoom(roomId, token, gatewayAuthResult.address, this._mainStream);
+        return new OdinRoom(roomId, tokenClaims.uid ?? '', server ?? '', this._mainStream);
       });
 
       /**

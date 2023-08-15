@@ -16,7 +16,7 @@ import { OdinAudioService } from './audio';
 import { OdinPeer } from './peer';
 import { OdinMedia } from './media';
 import { makeHandler, OdinStream } from './stream';
-import { openStream, parseJwt } from './utils';
+import { openStream } from './utils';
 import { EVENT_SCHEMAS, EventSchemaByMethod, PeerUpdatedSchemaType } from './schema-types';
 
 /**
@@ -72,12 +72,17 @@ export class OdinRoom {
    * Creates a new `OdinRoom` instance.
    *
    * @param _id         The ID of the new room
-   * @param _token      The token used to authenticate
+   * @param _user_id    The user ID specified in the authentication token
    * @param _address    The address of the ODIN SFU this room lives on
    * @param _mainStream The main stream connection this room is based on
    * @ignore
    */
-  constructor(private _id: string, private _token: string, private _address: string, private _mainStream: OdinStream) {
+  constructor(
+    private _id: string,
+    private _user_id: string,
+    private _address: string,
+    private _mainStream: OdinStream
+  ) {
     const audioService = OdinAudioService.getInstance();
     if (audioService) {
       this._audioService = audioService;
@@ -450,7 +455,7 @@ export class OdinRoom {
         }
         this._data = roomUpdate.room.user_data;
         this._customer = roomUpdate.room.customer;
-        this._ownPeer = new OdinPeer(this._roomStream, roomUpdate.own_peer_id, parseJwt(this._token).uid ?? '', false);
+        this._ownPeer = new OdinPeer(this._roomStream, roomUpdate.own_peer_id, this._user_id, false);
         this._ownPeer.setFreeMediaIds(roomUpdate.media_ids);
         for (const remotePeer of roomUpdate.room.peers) {
           const peer = this.addRemotePeer(remotePeer.id, remotePeer.user_id, remotePeer.medias, remotePeer.user_data);
