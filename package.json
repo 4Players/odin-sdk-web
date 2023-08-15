@@ -1,6 +1,6 @@
 {
   "name": "@4players/odin",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "A cross-platform SDK enabling developers to integrate real-time VoIP chat technology into their projects",
   "author": "Josho Bleicker <josho.bleicker@4players.io> (https://www.4players.io)",
   "homepage": "https://www.4players.io",
