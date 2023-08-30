@@ -140,6 +140,20 @@ export interface IOdinAudioStats {
 }
 
 /**
+ * Interface describing voice processing statistics from the audio worker.
+ */
+export interface IOdinVoiceProcessingStats {
+  /**
+   * Speech presence probability in the audio signal (0-1).
+   */
+  speech_probability: number;
+  /**
+   * Current audio signal input volume in dbFS (logarithmic negative values up to 0).
+   */
+  rms_dbfs: number;
+}
+
+/**
  * Helper type to use for init and connect functions.
  */
 export type OdinAudioContextConfig = { input: AudioContext; output: AudioContext };
@@ -326,7 +340,7 @@ export type OdinMessageReceivedEvent = (event: IOdinEvent<IOdinMessageReceivedEv
  */
 export interface IOdinAudioStatsEventPayload {
   /**
-   * The `OdinRoom` instace the stats ere coming from.
+   * The `OdinRoom` instance the stats ere coming from.
    */
   room: OdinRoom;
   /**
@@ -341,6 +355,27 @@ export interface IOdinAudioStatsEventPayload {
  * Provides the updated stats of the encoder and decoder.
  */
 export type OdinAudioStatsEvent = (event: IOdinEvent<IOdinAudioStatsEventPayload>) => void;
+
+/**
+ * Interface describing the payload of an `OdinVoiceProcessingStatsEvent`.
+ */
+export interface IOdinVoiceProcessingStatsEventPayload {
+  /**
+   * The `OdinRoom` instance the stats ere coming from.
+   */
+  room: OdinRoom;
+  /**
+   * The internal RNN VAD stats.
+   */
+  stats: IOdinVoiceProcessingStats;
+}
+
+/**
+ * Event emitted to determine the current speech presence probability and signal volume.
+ *
+ * Provides the updated stats of the RNN VAD algorithm.
+ */
+export type OdinVoiceProcessingStatsEvent = (event: IOdinEvent<IOdinVoiceProcessingStatsEventPayload>) => void;
 
 /**
  * Interface describing possible media events.
@@ -404,6 +439,10 @@ export interface IOdinRoomEvents {
    * Internal encoder/decoder stats updates.
    */
   AudioStats: OdinAudioStatsEvent;
+  /**
+   * Internal RNN VAD stats updates.
+   */
+  VoiceProcessingStats: OdinVoiceProcessingStatsEvent;
 }
 
 /**

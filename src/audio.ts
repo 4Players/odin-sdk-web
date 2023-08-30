@@ -96,6 +96,11 @@ export class OdinAudioService {
             new OdinEvent<IOdinAudioStatsEventPayload>('AudioStats', { room: this._room, stats: event.data })
           );
           break;
+        case 'vad_status':
+          this._room.eventTarget.dispatchEvent(
+            new OdinEvent<IOdinAudioStatsEventPayload>('VoiceProcessingStats', { room: this._room, stats: event.data })
+          );
+          break;
         case 'talk_status':
           this.updateMediaActivity(event.data.media_id, event.data.is_talking);
           break;
