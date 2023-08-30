@@ -381,6 +381,15 @@ export class OdinAudioService {
   }
 
   /**
+   * Enables/disables emitting of voice activity detection stats.
+   */
+  setVoiceProcessingStatsEnabled(enabled: boolean) {
+    this._worker.postMessage({
+      type: enabled ? 'start_vad_meter' : 'stop_vad_meter',
+    });
+  }
+
+  /**
    * Stops all audio encoding/decoding and closes the related connections. This includes disconnecting the encoder and decoder nodes,
    * closing the audio data channel, and stopping any audio currently playing.
    */

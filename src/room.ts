@@ -757,6 +757,24 @@ export class OdinRoom {
   }
 
   /**
+   * Enables emitting of RNN-based voice activity detection statistics.
+   */
+  startVADMeter() {
+    if (!this._audioService) return;
+
+    this._audioService.setVoiceProcessingStatsEnabled(true);
+  }
+
+  /**
+   * Disables emitting of RNN-based voice activity detection statistics.
+   */
+  stopVADMeter() {
+    if (!this._audioService) return;
+
+    this._audioService.setVoiceProcessingStatsEnabled(false);
+  }
+
+  /**
    * Updates thresholds for vice activity detection (between 0 and 1).
    *
    * @param attackProbability  Voice probability value when the VAD should engage
