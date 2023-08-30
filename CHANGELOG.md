@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.1
+
+- Added `OdinRoom.startVADMeter` and `OdinRoom.stopVADMeter`.
+- Added `VoiceProcessingStats` event on `OdinRoom`.
+
 ## 0.17.0
 
 - Added `OdinRoom.pauseMedia` and `OdinRoom.resumeMedia`.
