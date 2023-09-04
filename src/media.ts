@@ -132,24 +132,10 @@ export class OdinMedia {
     }
 
     if (this._remote) {
-      this._audioService.audioWorker.postMessage({
-        type: 'start_decoder',
-        media_id: this._id,
-        properties: {
-          sample_rate: this._audioService.outputSampleRate,
-        },
-      });
+      this._audioService.startDecoder(this);
     } else {
       await this._audioService.room.addMedia(this);
-      this._audioService.audioWorker.postMessage({
-        type: 'start_encoder',
-        media_id: this._id,
-        properties: {
-          sample_rate: this._audioService.inputSampleRate,
-          fec: true,
-          voip: true,
-        },
-      });
+      this._audioService.startEncoder(this);
     }
 
     this._audioService.registerMedia(this);
@@ -168,16 +154,10 @@ export class OdinMedia {
     }
 
     if (this._remote) {
-      this._audioService.audioWorker.postMessage({
-        type: 'stop_decoder',
-        media_id: this._id,
-      });
+      this._audioService.stopDecoder(this);
     } else {
       await this._audioService.room.removeMedia(this);
-      this._audioService.audioWorker.postMessage({
-        type: 'stop_encoder',
-        media_id: this._id,
-      });
+      this._audioService.stopEncoder(this);
     }
 
     this._active = false;

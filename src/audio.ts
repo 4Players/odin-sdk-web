@@ -57,6 +57,11 @@ export class OdinAudioService {
   private _artificialPacketLoss: number = 0;
 
   /**
+   * Whether or not RNN VAD statistics are enabled.
+   */
+  private _voiceProcessingStatsEnabled: boolean = false;
+
+  /**
    * Default settings for audio processing.
    */
   private _audioSettings: IOdinAudioSettings = {
@@ -276,6 +281,74 @@ export class OdinAudioService {
   }
 
   /**
+   * Starts an internal encoder for the specified media.
+   *
+   * @param media The media to start an encoder for
+   */
+  startEncoder(media: OdinMedia): void {
+    this._worker.postMessage({
+      type: 'start_encoder',
+      media_id: media.id,
+      properties: {
+        sample_rate: this.inputSampleRate,
+        fec: true,
+        voip: true,
+      },
+    });
+
+    if (this._voiceProcessingStatsEnabled) {
+      this._worker.postMessage({
+        type: 'start_vad_meter',
+      });
+    }
+  }
+
+  /**
+   * Stops an internal encoder for the specified media.
+   *
+   * @param media The media to stop an encoder for
+   */
+  stopEncoder(media: OdinMedia): void {
+    this._worker.postMessage({
+      type: 'stop_encoder',
+      media_id: media.id,
+    });
+
+    if (this._voiceProcessingStatsEnabled) {
+      this._worker.postMessage({
+        type: 'stop_vad_meter',
+      });
+    }
+  }
+
+  /**
+   * Starts an internal decoder for the specified media.
+   *
+   * @param media The media to start a decoder for
+   */
+  startDecoder(media: OdinMedia): void {
+    this._worker.postMessage({
+      type: 'start_decoder',
+      media_id: media.id,
+      properties: {
+        sample_rate: this.outputSampleRate,
+      },
+    });
+  }
+
+  /**
+   * Stops an internal decoder for the specified media.
+   *
+   * @param media The media to stop a decoder for
+   */
+  stopDecoder(media: OdinMedia): void {
+    this._worker.postMessage({
+      type: 'stop_decoder',
+      media_id: media.id,
+    });
+  }
+
+  /**
    * Set up the audio device, encoder and decoder.
    */
   async setupAudio(): Promise<void> {
@@ -392,6 +465,8 @@ export class OdinAudioService {
     this._worker.postMessage({
       type: enabled ? 'start_vad_meter' : 'stop_vad_meter',
     });
+
+    this._voiceProcessingStatsEnabled = enabled;
   }
 
   /**
