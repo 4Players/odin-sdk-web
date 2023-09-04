@@ -64,6 +64,6 @@ function checkTypedArrayType(someTypedArray: any) {
 
 function assertPath(expr: unknown, path: Array<string | number>, msg: string): asserts expr {
   if (!expr) {
-    throw new Error(`Error from field: ${path.join('.')}, reason: ${msg}`);
+    throw new Error(`Field validation failed '${path.join('.')}'; ${msg}`);
   }
 }

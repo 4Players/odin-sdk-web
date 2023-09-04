@@ -129,7 +129,7 @@ export class OdinStream {
  */
 async function send(stream: OdinStream, id: number | null, method: string, params: any): Promise<void | unknown> {
   if (stream.websocket === null) {
-    throw new Error('stream closed');
+    throw new Error('Stream is closed');
   }
   const request = id !== null ? [0, id, method, params] : [2, method, params];
   const packedRequest = pack(request);
@@ -145,7 +145,7 @@ async function send(stream: OdinStream, id: number | null, method: string, param
       if (stream.timeout > 0) {
         timeoutHandle = setTimeout(() => {
           if (stream.requests.delete(id)) {
-            reject(new Error('timeout at method: ' + method));
+            reject(new Error(`Stream timeout at method ${method}`));
             stream.close();
           }
         }, stream.timeout);

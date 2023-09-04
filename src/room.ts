@@ -215,10 +215,10 @@ export class OdinRoom {
         })) as { stream_id: string };
         streamId = result.stream_id;
       } catch (e) {
-        throw new Error('JoinRoom on the main stream failed\n' + e);
+        throw new Error('RPC JoinRoom failed\n' + e);
       }
 
-      if (!streamId) throw new Error('No Stream ID fetched\n');
+      if (!streamId) throw new Error('No stream ID received\n');
 
       try {
         this._roomStream = await openStream(`wss://${this._address}/room?${streamId}`, this.streamHandler.bind(this));
@@ -227,7 +227,7 @@ export class OdinRoom {
           this.disconnect();
         };
       } catch (e) {
-        throw new Error('Could not open the room stream\n' + e);
+        throw new Error('Failed to open room stream\n' + e);
       }
 
       await new Promise<void>((resolve, reject) =>
@@ -249,7 +249,7 @@ export class OdinRoom {
       return this._ownPeer;
     } catch (e) {
       this.connectionState = 'error';
-      throw new Error('Could not join the room\n' + e);
+      throw new Error(`Failed to join room '${this.id}'\n` + e);
     }
   }
 
@@ -268,7 +268,7 @@ export class OdinRoom {
     try {
       await this._audioService.updateInputStream(mediaStream);
     } catch (e) {
-      throw new Error('Could not change MediaStream\n' + e);
+      throw new Error('Failed to change media stream\n' + e);
     }
   }
 
@@ -673,7 +673,7 @@ export class OdinRoom {
     data: Uint8Array
   ): OdinPeer {
     if (peerId === this._ownPeer.id) {
-      throw new Error('Can not add the remote peer with this method\n');
+      throw new Error('Unable to add remote peer; invalid type\n');
     }
 
     const peer = new OdinPeer(this._roomStream, peerId, userId, true);

@@ -209,7 +209,7 @@ export class OdinClient {
       return this._rooms;
     } catch (e) {
       this.connectionState = 'error';
-      throw new Error('Failed to establish main stream connection\n' + e);
+      throw new Error('Failed to open main stream\n' + e);
     }
   }
 
@@ -230,7 +230,7 @@ export class OdinClient {
     try {
       return await this.connect(token, gateway, audioContext);
     } catch (e) {
-      throw new Error('Could not connect the rooms\n' + e);
+      throw new Error('Failed to establish connection to server\n' + e);
     }
   }
 
@@ -253,7 +253,7 @@ export class OdinClient {
     if (rooms.length) {
       return rooms[0];
     } else {
-      throw new Error('Could not create a room\n');
+      throw new Error('Failed to initialize room\n');
     }
   }
 
@@ -288,13 +288,13 @@ export class OdinClient {
         }),
       });
     } catch (e) {
-      throw new Error('Error happened when authenticating at the gateway\n' + e);
+      throw new Error('Failed to authenticate against gateway\n' + e);
     }
     const body = await response.json();
     if (body.result) {
       return body.result;
     } else {
-      throw new Error(`Gateway authentication failed:\n ${body.error.message}`);
+      throw new Error('Failed to authenticate against gateway\nError: ' + body.error.message);
     }
   }
 

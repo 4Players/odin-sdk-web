@@ -16,7 +16,7 @@ export async function openStream(url: string, handler: OdinStreamHandler): Promi
       stream.addEventListener('error', reject, { once: true });
     });
   } catch (e) {
-    throw new Error('Could not open the stream\n' + e);
+    throw new Error(`Failed to connect to '${url}'`);
   }
   return stream;
 }

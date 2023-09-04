@@ -67,7 +67,7 @@ export class OdinRtcHandler {
         sdp: answer.sdp,
       });
     } catch (e) {
-      throw new Error('Error when starting WebRTC\n' + e);
+      throw new Error('RPC SetupWebRtc failed\n' + e);
     }
   }
 
