@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.2
+
+- Updated TypeScript example to show popups on connection errors.
+- Fixed a bug where calling `OdinRoom.startVADMeter` had no effect before `OdinMedia.start` was called on an input stream.
+- Improved error handling when establishing connection to server.
+
 ## 0.17.1
 
 - Added `OdinRoom.startVADMeter` and `OdinRoom.stopVADMeter`.
