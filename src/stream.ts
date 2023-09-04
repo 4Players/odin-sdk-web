@@ -9,7 +9,7 @@ export interface RequestResolve {
   method: string;
   resolve: (result: unknown) => void;
   reject: (error: Error) => void;
-  timeoutHandle: NodeJS.Timeout | null;
+  timeoutHandle: ReturnType<typeof setTimeout> | null;
   handler?: (method: string, params: unknown) => Promise<unknown>;
 }
 
