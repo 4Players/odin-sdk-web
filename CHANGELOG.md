@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.3
+
+- Use `ReturnType<typeof setTimeout>` instead of `NodeJS.Timeout` types. 
+
 ## 0.17.2
 
 - Updated TypeScript example to show popups on connection errors.
