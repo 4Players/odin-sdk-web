@@ -205,7 +205,9 @@ export class OdinRoom {
       userData = new Uint8Array();
     }
 
+    const streamUrl = `wss://${this._address}/room`;
     let streamId: string | undefined;
+
     try {
       try {
         const result = (await this._mainStream.request('JoinRoom', {
@@ -221,7 +223,7 @@ export class OdinRoom {
       if (!streamId) throw new Error('No stream ID received\n');
 
       try {
-        this._roomStream = await openStream(`wss://${this._address}/room?${streamId}`, this.streamHandler.bind(this));
+        this._roomStream = await openStream(`${streamUrl}?${streamId}`, this.streamHandler.bind(this));
         this._roomStream.onclose = () => {
           this.disconnect();
         };

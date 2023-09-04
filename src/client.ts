@@ -142,6 +142,8 @@ export class OdinClient {
       this._audioService = OdinAudioService.setInstance(this._worker, this._rtcHandler.audioChannel, audioContexts);
     }
 
+    const tokenClaims = parseJwt(token);
+
     this.connectionState = 'connecting';
 
     if (!server) {
@@ -150,17 +152,17 @@ export class OdinClient {
       server = server.replace('https://', ''); // cleanup server address for now
     }
 
+    // always authenticate against gateway unless we specifically created a token for sfu audience
+    if (tokenClaims.aud !== 'sfu') {
+      const authResult = await this.authGateway(token, `https://${server}`);
+      server = authResult.address;
+      token = authResult.token;
+    }
+
+    const streamUrl = `wss://${server}/main`;
+
     try {
-      const tokenClaims = parseJwt(token);
-
-      // always authenticate against gateway unless we specifically created a token for sfu audience
-      if (tokenClaims.aud !== 'sfu') {
-        const authResult = await this.authGateway(token, `https://${server}`);
-        server = authResult.address;
-        token = authResult.token;
-      }
-
-      this._mainStream = await openStream(`wss://${server}/main`, this.mainHandler);
+      this._mainStream = await openStream(streamUrl, this.mainHandler);
 
       this._mainStream.onclose = () => {
         this.disconnect();
