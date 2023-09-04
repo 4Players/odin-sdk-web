@@ -163,13 +163,11 @@ export class OdinClient {
       this._mainStream = await openStream(`wss://${server}/main`, this.mainHandler);
 
       this._mainStream.onclose = () => {
-        this.connectionState = 'disconnected';
         this.disconnect();
       };
 
       this._mainStream.onerror = () => {
-        this.connectionState = 'error';
-        this.disconnect();
+        this.disconnect('error');
       };
 
       let roomIds: string[] = [];
@@ -301,7 +299,13 @@ export class OdinClient {
   /**
    * Disconnects from all rooms and stops all audio handling.
    */
-  static disconnect(): void {
+  static disconnect(state: OdinConnectionState = 'disconnected'): void {
+    if (this.connectionState === 'disconnected' || this.connectionState === 'error') {
+      return; // already disconnected
+    }
+
+    this.connectionState = state;
+
     this._rooms.forEach((room) => {
       if (room.connectionState !== 'disconnected') {
         room.disconnect();
@@ -309,6 +313,7 @@ export class OdinClient {
     });
 
     this._audioService?.stopAllAudio();
+
     this._mainStream?.close();
     this._worker?.terminate();
     this._rtcHandler?.stopRtc();

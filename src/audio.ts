@@ -398,7 +398,7 @@ export class OdinAudioService {
    * Stops all audio encoding/decoding and closes the related connections. This includes disconnecting the encoder and decoder nodes,
    * closing the audio data channel, and stopping any audio currently playing.
    */
-  stopAllAudio() {
+  async stopAllAudio() {
     if (this._encoderNode) {
       this._encoderNode.disconnect();
     }
@@ -410,13 +410,17 @@ export class OdinAudioService {
       this._audioSource = undefined;
     }
     if (this._audioContexts.input && this._audioContexts.input.state !== 'closed') {
-      this._audioContexts.input.close();
+      await this._audioContexts.input.close();
     }
-    if (this._audioContexts.output && this._audioContexts.output.state !== 'closed') {
-      this._audioContexts.output.close();
+    if (
+      this._audioContexts.output &&
+      this._audioContexts.input !== this._audioContexts.output &&
+      this._audioContexts.output.state !== 'closed'
+    ) {
+      await this._audioContexts.output.close();
     }
     if (this._audioDataChannel) {
-      this._audioDataChannel.close();
+      await this._audioDataChannel.close();
     }
     if (this._audioElement) {
       this._audioElement.pause();

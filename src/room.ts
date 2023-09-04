@@ -223,7 +223,6 @@ export class OdinRoom {
       try {
         this._roomStream = await openStream(`wss://${this._address}/room?${streamId}`, this.streamHandler.bind(this));
         this._roomStream.onclose = () => {
-          this.connectionState = 'disconnected';
           this.disconnect();
         };
       } catch (e) {
@@ -461,11 +460,11 @@ export class OdinRoom {
    *
    * @ignore
    */
-  disconnect(): void {
+  disconnect(state: OdinConnectionState = 'disconnected'): void {
     this._remotePeers.clear();
     this._roomStream?.close();
 
-    this.connectionState = 'disconnected';
+    this.connectionState = state;
   }
 
   /**
