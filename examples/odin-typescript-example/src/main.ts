@@ -74,6 +74,7 @@ async function connect(token: string) {
       });
   } catch (e) {
     console.error('Failed to join room', e);
+    alert(e);
     disconnect();
     resetUi();
   }
@@ -251,11 +252,18 @@ generateAccessKeyBtn?.addEventListener('click', () => {
 const toggleConnectionBtn = document.querySelector<HTMLButtonElement>('#toggle-connection');
 toggleConnectionBtn?.addEventListener('click', (e: any) => {
   if (OdinClient.connectionState === 'disconnected' || OdinClient.connectionState === 'error') {
-    const tokenGenerator = new TokenGenerator(accessKey);
-    const audience = (app.querySelector<HTMLSelectElement>('#token-audience')?.value ?? 'gateway') as 'gateway' | 'sfu';
-    const token = tokenGenerator.createToken(roomId, userId, { audience, customer: '<no customer>' });
-    console.log('Generated a new signed JWT to join room', token);
-    connect(token);
+    try {
+      const tokenGenerator = new TokenGenerator(accessKey);
+      const audience = (app.querySelector<HTMLSelectElement>('#token-audience')?.value ?? 'gateway') as
+        | 'gateway'
+        | 'sfu';
+      const token = tokenGenerator.createToken(roomId, userId, { audience, customer: '<no customer>' });
+      console.log('Generated a new signed JWT to join room', token);
+      connect(token);
+    } catch (e) {
+      console.error('Failed to generate token', e);
+      alert(e);
+    }
   } else {
     disconnect();
   }
