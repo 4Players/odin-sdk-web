@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.4
+
+- Fixed a bug when using `OdinClient.initRoom()` with the default gateway.
+
 ## 0.17.3
 
 - Now using `ReturnType<typeof setTimeout>` instead of `NodeJS.Timeout` types. 

@@ -63,7 +63,7 @@ export class OdinClient {
    * Global settings for ODIN connections.
    */
   static config: IOdinClientSettings = {
-    gatewayUrl: 'https://gateway.odin.4players.io',
+    gatewayUrl: 'gateway.odin.4players.io',
   };
 
   /**
