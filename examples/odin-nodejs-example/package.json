@@ -6,7 +6,7 @@
     "start": "node ."
   },
   "devDependencies": {
-    "@4players/odin": "^0.17.0",
+    "@4players/odin": "^0.18.0",
     "@4players/odin-tokens": "^1.4.0",
     "ws": "^8.13.0"
   }

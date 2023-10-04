@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0
+
+- Update `OdinRoom.join` and `OdinRoom.setPosition`to support 3D coordinates (requires server version 1.3.0 or later).
+
 ## 0.17.4
 
 - Fixed a bug when using `OdinClient.initRoom()` with the default gateway.
