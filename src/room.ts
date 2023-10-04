@@ -44,9 +44,9 @@ export class OdinRoom {
   private _ownPeer!: OdinPeer;
 
   /**
-   * The two-dimensional position of the current user within the room.
+   * The three-dimensional position of the current user within the room.
    */
-  private _position!: [number, number];
+  private _position!: [number, number, number];
 
   /**
    * The current connection state of the room, defaulting to 'disconnected'.
@@ -162,9 +162,9 @@ export class OdinRoom {
   }
 
   /**
-   * The current two-dimensional position of our own `OdinPeer` in the room.
+   * The current three-dimensional position of our own `OdinPeer` in the room.
    */
-  get position(): [number, number] {
+  get position(): [number, number, number] {
     return this._position;
   }
 
@@ -188,10 +188,10 @@ export class OdinRoom {
    * Joins the room and returns your own peer instance after the room was successfully joined.
    *
    * @param userData Optional user data to set for the peer when connecting
-   * @param position Optional coordinates to set the two-dimensional position of the peer in the room when connecting
+   * @param position Optional coordinates to set the three-dimensional position of the peer in the room when connecting
    * @returns        A promise of the own OdinPeer which yields when the room was joined
    */
-  async join(userData?: Uint8Array, position?: [number, number]): Promise<OdinPeer> {
+  async join(userData?: Uint8Array, position?: [number, number, number]): Promise<OdinPeer> {
     this.connectionState = 'connecting';
 
     if (!position) {
@@ -199,7 +199,8 @@ export class OdinRoom {
       const r = 0.5 * Math.sqrt(Math.random());
       const x = Math.cos(a) * r;
       const y = Math.sin(a) * r;
-      position = [x, y];
+      const z = Math.sin(a) * r;
+      position = [x, y, z];
     }
     if (!userData) {
       userData = new Uint8Array();
@@ -408,17 +409,18 @@ export class OdinRoom {
   }
 
   /**
-   * Updates the two-dimensional position of our own `OdinPeer` in the room to apply server-side culling.
+   * Updates the three-dimensional position of our own `OdinPeer` in the room to apply server-side culling.
    *
    * @param offsetX The new X coordinate for the peers position in the room
    * @param offsetY The new Y coordinate for the peers position in the room
+   * @param offsetZ The new Z coordinate for the peers position in the room
    */
-  setPosition(offsetX: number, offsetY: number): void {
-    this._position = [offsetX, offsetY];
+  setPosition(offsetX: number, offsetY: number, offsetZ: number): void {
+    this._position = [offsetX, offsetY, offsetZ];
 
     if (this._connectionState === 'connected') {
       this._roomStream?.request('SetPeerPosition', {
-        position: [offsetX, offsetY],
+        position: [offsetX, offsetY, offsetZ],
       });
     }
   }
