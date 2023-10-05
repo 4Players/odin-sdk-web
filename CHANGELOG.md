@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0
+
+- Removed `OdinRoom.flushDataUpdate` and setter for `OdinRoom.data` (use `RoomUpdate` RPC on an ODIN gateway instead).
+
 ## 0.18.0
 
 - Update `OdinRoom.join` and `OdinRoom.setPosition`to support 3D coordinates (requires server version 1.3.0 or later).
