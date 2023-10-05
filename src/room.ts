@@ -105,15 +105,6 @@ export class OdinRoom {
   }
 
   /**
-   * Sets the user data of the room.
-   *
-   * @param data
-   */
-  set data(data: Uint8Array) {
-    this._data = data;
-  }
-
-  /**
    * The arbitrary user data of the room.
    */
   get data(): Uint8Array {
@@ -423,15 +414,6 @@ export class OdinRoom {
         position: [offsetX, offsetY, offsetZ],
       });
     }
-  }
-
-  /**
-   * Sends updated user data of the room to the server.
-   */
-  async flushDataUpdate() {
-    await this._roomStream?.request('UpdateRoom', {
-      user_data: this.data,
-    });
   }
 
   /**
