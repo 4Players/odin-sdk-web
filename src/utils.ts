@@ -91,3 +91,20 @@ export function isBlinkBrowser(): boolean {
   const pattern = /(apple)?webkit\/537\.36/i;
   return pattern.test(window.navigator.userAgent);
 }
+
+/**
+ * Generate a random point inside a unit sphere.
+ *
+ * @return The new position
+ */
+export function randomPointInUnitSphere(): [number, number, number] {
+  const theta = Math.random() * 2.0 * Math.PI;
+  const phi = Math.random() * Math.PI;
+  const r = Math.cbrt(Math.random());
+
+  const x = r * Math.sin(phi) * Math.cos(theta);
+  const y = r * Math.sin(phi) * Math.sin(theta);
+  const z = r * Math.cos(phi);
+
+  return [x, y, z];
+}
