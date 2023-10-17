@@ -186,12 +186,7 @@ export class OdinRoom {
     this.connectionState = 'connecting';
 
     if (!position) {
-      const a = Math.random() * 2 * Math.PI;
-      const r = 0.5 * Math.sqrt(Math.random());
-      const x = Math.cos(a) * r;
-      const y = Math.sin(a) * r;
-      const z = Math.sin(a) * r;
-      position = [x, y, z];
+      position = [0.0, 0.0, 0.0];
     }
     if (!userData) {
       userData = new Uint8Array();
