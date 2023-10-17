@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.1
+
+- Fixed a potential issue where generating random positions when joining rooms could lead to neighbor peers not being visible.
+
 ## 0.19.0
 
 - Removed `OdinRoom.flushDataUpdate` and setter for `OdinRoom.data` (use `RoomUpdate` RPC on an ODIN gateway instead).
