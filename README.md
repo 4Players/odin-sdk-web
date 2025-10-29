@@ -6,9 +6,11 @@
 
 ODIN is a cross-platform software development kit (SDK) that enables developers to integrate real-time voice chat technology into multiplayer games, apps and websites.
 
-This package is fully compatible with all of our other client SDKs, allowing you to effortlessly connect and communicate with any native app or game that has integrated ODIN. Whether using your favorite web browser or a native app, ODIN makes it easy for you to stay connected with those who matter most.
+This package is fully compatible with all of our other client SDKs, allowing you to effortlessly connect and communicate with any native app or game that has integrated ODIN Voice by [4Players GmbH](https://www.4players.io/company/about_us/). Whether using your favorite web browser or a native app, ODIN Voice makes it easy for you to stay connected with those who matter most.
 
-[Online Documentation](https://www.4players.io/developers/)
+[ODIN Web SDK Online Documentation](https://docs.4players.io/voice/web/)
+
+[Full Online Documentation](https://docs.4players.io/voice/)
 
 ## Audio Processing Features
 
@@ -118,7 +120,7 @@ Contact us through the listed methods below to receive answers to your questions
 
 Join our official Discord server to chat with us directly and become a part of the 4Players ODIN community.
 
-[![Join us on Discord](https://developers.4players.io/images/join_discord.png)](https://4np.de/discord)
+[![Join us on Discord](https://docs.4players.io/img/join_discord.png)](https://4np.de/discord)
 
 ### Twitter
 
